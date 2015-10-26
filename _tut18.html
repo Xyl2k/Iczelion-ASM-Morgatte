@@ -1,0 +1,459 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion Win32asm Tutorial 18: Common Controls</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFF99">Tutorial 18: Commandes Communes<BR>(Common Controls)</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Nous allons voir quelles sont les commandes les plus utilisées et voir comment on les emploie. Ce Tutorial sera seulement une rapide introduction à celles-ci.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Downloadez l'exemple <a href="files/tut18.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#00CC00"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Windows 95 a été doté de plusieurs nouveautés d'interface d'utilisateur que n'avait pas Windows 3.1x. Ceci enrichi encore le GUI (NdT : Graphic User Interface). Plusieurs d'entre eux sont largement employés avant même que Windows 95 ne s'affiche à l'écran, comme la barre de statut, des barres d'outils etc. Les programmeurs doivent les coder eux-mêmes. Maintenant Microsoft les a inclus dans Windows 9x et NT. Nous allons les voir ici.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Voici ces nouvelles commandes :</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Toolbar</font></font></font> -----> (barre d'outils)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tooltip</font></font></font> -----> (Bulle d'information: <A HREF="_tut27.html">voir tuorial 27</A>)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Status bar</font></font></font> -----> (barre d'état)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Property sheet</font></font></font> -----> (feuille de propriété)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Property page</font></font></font> -----> (page de propriété)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tree view</font></font></font> -----> (dossiers organisés sous la forme d'un arbre. <A HREF="_tut19.html">Voir tutorial 19</A>)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>List view</font></font></font> -----> (dossiers organisés sous la forme d'une simple liste. <A HREF="_tut31.html">Voir tutorial 31</A>)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Animation</font></font></font> -----> (animation, films AVI)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Drag list</font></font></font> -----> ()</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Header</font></font></font> -----> (en-tete)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Hot-key</font></font></font> -----> (fontion touches racourcis)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Image list</font></font></font> -----> (liste d'images)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Progress bar</font></font></font> -----> (barre de progression de chargement)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Right edit</font></font></font> -----> ()</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tab</font></font></font> -----> (la touche Tab)</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Trackbar</font></font></font> -----> ()</li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Up-down</font></font></font> -----> (les flèches haut/bas pour le défilement de d'une page)</li>
+</ul>
+<FONT COLOR="#996699">Voici une adresse ou vous trouverez de petits programmes d'exemples de chacun de ces Common Control. Ils 
+ont étés codés en C++ et non pas en MASM mais le principe est là. Vous comprendrez ce que chacun d'eux représente.<BR>
+<A HREF="http://www.microsoft.com/msj/defaulttop.asp?page=/msj/0798/controlspytop.htm">http://www.microsoft.com/msj/defaulttop.asp?page=/msj/0798/controlspytop.htm</A><BR>
+(Merci à Sharpsighted pour l'info. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; sharpsighted@caramail.com)</FONT>
+<BR><BR>
+
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Puisque il y en a beaucoup, le fait de les charger en mémoire et les déclarer serait une perte de ressource. Tous, à l'exception du contrôle d'édition, sont stockés dans comctl32.dll. Et n'importe quel programme peut les charger quand il a besoin d'employer une de ces commandes. Le contrôle d'édition (riche ou évolué)réside dans son propre dll, richedXX.dll, parce qu'il est très compliqué et plus volumineux que ses frères.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez charger comctl32.dll grâce à l'inclusion d'un Call <b> InitCommonControls </b> dans votre programme. InitCommonControls est une fonction de comctl32.dll, donc en vous y référant n'importe où dans votre code, fera que le Loader PE chargera comctl32.dll quand votre programme est en court. <B>Vous ne devez pas l'exécuter, incluez la simplement quelque part dans votre code</b>. Cette fonction ne fait <b>RIEN!</b> Sa seule et unique instruction est "ret". Son seul but c'est d'inclure la référence de comctl32.dll dans la section d'importation pour que le Loader PE le charge à chaque fois que le programme est chargé. Le vrai boulot se fait au niveau de l'entrypoint de la fonction DLL qui enregistre toutes les classes de contrôles communs (common control classes) quand le dll est chargé. Les 'Commons Controls' sont créées sur la base de ces classes, tout comme d'autre 'child window controls' tels que la zone d'édition, la liste etc.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Pour le contrôle d'édition évolué (riche) c'est une autre histoire. Si vous voulez l'employer, vous devez appeler LoadLibrary pour le charger et appeler FreeLibrary pour le décharger. <Br> Maintenant nous allons voir comment les créer. Vous pouvez employer un éditeur de ressources pour les incorporer dans des boîtes de dialogue ou bien vous pouvez les créer vous-même. Presque tous les common controls sont créées en appelant CreateWindowEx ou CreateWindow, en leur passant le nom de la classe du contrôle. Quelques common controls ont des fonctions de création spéciales, cependant, ce ne sont que des broutilles autour de CreateWindowEx pour rendre la création de ces 'controls' plus simple. Ces fonctions spécifiques de création sont inscrites ci-dessous :</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>CreateToolbarEx</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>CreateStatusWindow</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>CreatePropertySheetPage</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>PropertySheet</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ImageList_Create</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Pour pouvoir créer ces 'common controls', vous devez connaître leurs noms de classe. Les voici inscrits ci-dessous :</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>&nbsp;
+<center><table BORDER WIDTH="62%" >
+<tr BGCOLOR="#3366FF">
+<td>
+<center><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Class Name</font></font></font></center>
+</td>
+<td>
+<center><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Common Control</font></font></font></center>
+</td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ToolbarWindow32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Toolbar</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>tooltips_class32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tooltip</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>msctls_statusbar32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Status bar</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SysTreeView32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tree view</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SysListView32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>List view</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SysAnimate32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Animation</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SysHeader32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Header</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>msctls_hotkey32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Hot-key</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>msctls_progress32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Progress bar</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>RICHEDIT</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Rich edit</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>msctls_updown32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Up-down</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SysTabControl32</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Tab</font></font></font></td>
+</tr>
+</table></center>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Les 'Property sheets', les 'property pages' et l 'image list control' (soit les feuilles de propriété, les pages de propriété, et le contrôle de liste d'image) ont leurs propres fonctions spécifiques de création. La 'Drag list control' gonfle encore la liste donc elle n'a pas sa propre classe. Ces susdits noms de classe sont vérifiés en regardant le scénario de ressource, produit par l'éditeur de ressource Visuel C++. Ils diffèrent des noms de classe inscrits par win32 de la référence Borland api et de ceux de la Programmation Windows de Charles Petzold 95. La liste est précisément celle-ci.
+<br>Ces common controls peuvent utiliser les styles généraux de fenêtres tel que WS_CHILD etc. Ils ont aussi leurs propres styles spécifiques comme TVS_XXXXX pour la 'tree view control' (contrôle montrant les fichiers sous forme d'arbre ), LVS_xxxx pour la 'list view control' (contrôle montrant les fichiers sous forme d'une liste ), etc. La référence d' api Win32 sera votre meilleur ami à cet égard.
+<br>Maintenant que nous savons comment créer des common controls, nous pouvons nous intéresser à la méthode de communication entre ces common controls et leurs parents. À la différence des 'child window controls', les 'common controls' ne communique pas avec leur parent avec des messages WM_COMMAND. Au lieu de ça, ils envoient des messages WM_NOTIFY à la fenêtre parente lorsque certains événements bien précis arrivent. Le parent peut contrôler les enfants en leur envoyant des messages. Il y a aussi beaucoup de nouveaux messages pour ces nouvelles commandes. Vous devez consulter votre référence api win32 pour plus de détail.
+<br>Dans l'exemple suivant, on va examiner la barre de progression et les commandes de barre de statut. ('progress bar' et 'status bar controls')</font></font></font>
+
+<h4><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>échantillon de code:</font></font></font></h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;<b>.386</b></font></font></font>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\comctl32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\comctl32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>IDC_PROGRESS equ 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<FONT COLOR="#CCCC00">; Les n° d'Identités des 'controls' (par exemple n°ID de la barre de progression)</font></FONT></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>IDC_STATUS equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>IDC_TIMER equ 3</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ClassName db "CommonControlWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>AppName&nbsp;&nbsp;&nbsp;db "Common Control Demo",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ProgressClass db "msctls_progress32",0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<FONT COLOR="#CCCC00">; La 'class name' de la barre de progression</FONT></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Message db "Finished!",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TimerID dd 0</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hwndProgress dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hwndStatus dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>CurrentStep dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke InitCommonControls</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_APPWORKSPACE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WS_OVERLAPPED+WS_CAPTION+WS_SYSMENU+WS_MINIMIZEBOX+WS_MAXIMIZEBOX+WS_VISIBLE,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain
+endp</font></font></font></b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WndProc
+proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR ProgressClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE,100,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+200,300,20,hWnd,IDC_PROGRESS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndProgress,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,1000&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; <FONT COLOR="#CCCC00">Le paramètre lParam du message PBM_SETRANGE contient la gamme, (en général de 0 à 100)</font></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov CurrentStep,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shl eax,16&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; <FONT COLOR="#CCCC00">La haute de la gamme (ici 100) est dans le mot de poids fort</FONT></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETRANGE,0,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETSTEP,10,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateStatusWindow,WS_CHILD+WS_VISIBLE,NULL,hWnd,IDC_STATUS</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndStatus,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTimer,hWnd,IDC_TIMER,100,NULL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; <FONT COLOR="#CCCC00">crée un minuteur (un timer)</FONT></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if TimerID!=0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke KillTimer,hWnd,TimerID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_TIMER&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ; <FONT COLOR="#CCCC00">Quand un 'timer event' survient</FONT></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_STEPIT,0,0&nbsp;&nbsp;&nbsp; ; <FONT COLOR="#CCCC00">Remplissage (pas à pas) de la barre de progression.</FONT></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub CurrentStep,10</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if CurrentStep==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke KillTimer,hWnd,TimerID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndStatus,SB_SETTEXT,0,addr Message</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hWnd,addr Message,addr AppName,MB_OK+MB_ICONINFORMATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndStatus,SB_SETTEXT,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETPOS,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WndProc
+endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>end
+start</font></font></font></b>
+<h4>
+<b><font face="Arial,Helvetica"><font color="#00CC00">Analyse:</font></font></b></h4>
+
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke InitCommonControls</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>J'ai délibérément mis InitCommonControls après ExitProcess pour vous faire voir que InitCommonControls est juste ici pour la mettre en référence comctl32.dll, dans la section d'importation. Comme vous pouvez le voir, les 'common controls' fonctionnent parfaitement même lorsque InitCommonControls n'est pas exécuter.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR ProgressClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE,100,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+200,300,20,hWnd,IDC_PROGRESS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndProgress,eax</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Voici l'endroit où nous créons le common control. Notez que cet appel de CreateWindowEx contient la variable 'hWnd' en tant que 'handle de la fenêtre parente'. On spécifie aussi un 'Control ID' pour l'identification de ce contrôle. Cependant, puisque nous avons l' handle du 'control', cet ID n'est pas employé. Tout 'child window control' doit avoir le style WS_CHILD.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,1000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov CurrentStep,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shl eax,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETRANGE,0,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETSTEP,10,0</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Après que la barre de progression est été créée, nous pouvons définir sa gamme. La gamme par défaut va de 0 à 100. Si vous n'en êtes pas satisfaits, vous pouvez spécifier votre propre gamme avec le message PBM_SETRANGE. Le message 'lParam' contient la gamme, la gamme maximale (ici 100d ou 64h) est placée dans le mot de poids fort alors que le minimum (0) est dans le mot de poids faible. Vous pouvez spécifier le 'nombre de pas' dont cette barre sera remplie, en employant PBM_SETSTEP. Dans notre exemple, on le met à 10 ce qui signifie que lorsque un message PBM_STEPIT est envoyé à la barre de progression, l'indicateur de progression montera de 10 par 10. Mais vous pouvez aussi définir le niveau de l'indicateur en envoyant des messages PBM_SETPOS. Ce message vous donne un contrôle plus précis sur la barre de progression.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateStatusWindow,WS_CHILD+WS_VISIBLE,NULL,hWnd,IDC_STATUS</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndStatus,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTimer,hWnd,IDC_TIMER,100,NULL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Crée un timer</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,eax</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ensuite, nous créons une barre de statut en appelant CreateStatusWindow. C'est un appel facile à comprendre donc je ne ferai pas de remarques. Après que la fenêtre de statut ait été créée, nous fabriquons un minuteur. Dans cet exemple, nous mettrons à jour la barre de progrès dans un intervalle régulier de 100ms, donc nous devons créer un contrôle de minuteur (un control timer). Ci-dessous voici le 'prototype de fonction' de SetTimer.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>SetTimer
+PROTO hWnd:DWORD, TimerID:DWORD, TimeInterval:DWORD, lpTimerProc:DWORD</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>hWnd</b>
+: handle de la fenêtre Parente</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TimerID</b>
+: Le n° d'Identité du minuteur (du Timer), différent de zéro. Vous pouvez mettre le n° que vous voulez pour l'identifier. Mais si vous avez plusieurs Timers , chacun doit avoir son propre n° d'ID</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TimerInterval</b>
+: L'intervalle de temps du minuteur, en millisecondes, doit être terminé avant que le minuteur appelle la procédure du minuteur ou envoie un message WM_TIMER</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>lpTimerProc</b>
+: L'adresse de la fonction minuteur (la fonction de temps) qui sera appelée lorsque l'intervalle de temps est expiré. Si ce paramètre est NULL, le minuteur enverra le message WM_TIMER à la fenêtre parente, au lieu de cette adresse.</font></font></font><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Si cet appel est couronné de succès, il renverra le TimerID. S'il a échoué, il retourne la valeur  0. C'est pourquoi la valeur du TimerID doit absolument être  différente de zéro.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_TIMER</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_STEPIT,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub CurrentStep,10</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if CurrentStep==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke KillTimer,hWnd,TimerID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TimerID,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndStatus,SB_SETTEXT,0,addr Message</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hWnd,addr Message,addr AppName,MB_OK+MB_ICONINFORMATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndStatus,SB_SETTEXT,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndProgress,PBM_SETPOS,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'intervalle de temps indiqué expire, le minuteur (le timer) envoie le message WM_TIMER. Vous pourrez placer votre propre code ici pour qu'il soit exécuté. Dans cet exemple, nous mettons à jour la barre de progression et vérifions ensuite si la limite maximale a été atteinte (dépassée). Si c'est le cas, nous fermons le Timer et mettons ensuite le texte dans la fenêtre de statut avec le message SB_SETTEXT. Une boîte de message est affichée, et quand l'utilisateur clique sur OK, nous purifions le texte de la barre de statut ainsi que la barre de progression.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly Homepage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

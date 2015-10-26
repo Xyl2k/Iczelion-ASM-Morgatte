@@ -1,0 +1,447 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7 [en] (Win98; I) [Netscape]">
+   <title>Iczelion's Win32 ASM tutorial 3: Une Simple Fenêtre</title>
+</head>
+<body STYLE="#text-align:justify" FACE="#Times New Roman" text="#C0C0C0" bgcolor="#000000" link="#00FFFF" vlink="#FF34D0" alink="#98FF98">
+<center>
+<h1>
+<font face="Arial"><font color="#999900">Tutorial 3: Une Simple Fenêtre</font></font></h1></center>
+<font size=-1>Dans ce tutorial, nous construirons un programme Win qui ouvre une fenêtre entièrement fonctionnelle sur le bureau. (Un programme Win, est un programme qui tourne sous Windows et non pas comme certains sous le DOS).</font>
+<br><font size=-1>Downloadez le fichier en exemple <a href="files/tut03.zip">ici</a></font>
+<h3>
+<font color="#FF9800"><font size=+0>Th&eacute;orie:</font></font></h3>
+<font size=-1>Les programmes Win font fréquemment appels aux fonctions API pour leur GUI (NdT : Graphic User Interface). Le GUI c'est l'ensemble des objets tels qu'une boîte de saisie de texte, les boutons... En fait, pour fabriquer un programme Win32 on crée d'abord une fenêtre principale vide(c'est ce qu'on va faire dans ce tutorial) puis on place par dessus des objets du GUI suivant ce qu'on veut. Il faut bien un lien entre la fenêtre principale et ses objets, car il peut aussi y avoir plusieurs fenêtres principales d'ouvertes, ce lien c'est le n°'Handle' de la fenêtre principale qui est donnée comme paramètre à chaque objet pour dire que ces objets font parti de cette fenêtre-ci et non une autre. 
+Ceci est à la fois bénéfique pour les utilisateurs et pour les programmeurs. Ainsi les utilisateurs n'ont plus besoin de comprendre comment le GUI de chaques nouveaux programmes fonctionne, le GUI de chaque programme Win est semblable. Pour les programmeurs, les codes du GUI sont déjà à sa disposition, évalués et prêts à être utilisés. Le revers pour les programmeurs c'est la complexité accrue. Pour créer ou manipuler n'importe quels objets du GUI comme des fenêtres, un menu ou des icônes, les programmeurs doivent suivre une recette stricte. Mais ceci peut être surmonté par la programmation modulaire ou le paradigme OOP.
+<br>Ci-dessous, je vous montre les étapes exigées pour créer une fenêtre sur le bureau:</font>
+<ol>
+<li>
+<font size=-1>Déclarez l'"instance handle" de votre programme (obligatoire)</font></li><BR>
+l'instance handle du prog est l'adresse mémoire de base où windows à chargé l'exe dans le processeur, en général 400000 pour un exe et 100000 pour une DLL. Cette valeur sert à des fonctions win32 pour charger des ressources.
+
+<li>
+<font size=-1>Déclarez la 'command line' (Non exigé à moins que votre programme ne veuille traiter une ligne de commande)</font></li><BR>
+'GetCommandLine' sert à conna&icirc;tre la ligne de commande lors du lancement de l'appli, des paramètres. exemple -->monprog.exe cmd1,cmd2 ,et tout ce qui est après exe fait partie de la ligne de commande.
+
+<li>
+<font size=-1>Définissez la 'window class' (Obligatoire, à moins que vous utilisiez un type de fenêtre prédéfini telle qu': une  MessageBox ou une DialogBox)</font></li>
+
+<li>
+<font size=-1>Créez la fenêtre (ben oui Obligé)</font></li>
+
+<li>
+<font size=-1>Affichez la fenêtre sur le bureau (Obligé à moins que vous ne vouliez pas montrer la fenêtre immédiatement)</font></li>
+
+<li>
+<font size=-1>Rafraichir l'intérieur de la (Client Area) zone de travail de notre fenêtre</font></li>
+
+<li>
+<font size=-1>Créer un bout de code qui tourne sur lui-même à l'infini, capable de vérifier les messages de Windows (comme l'attente d'une action)</font></li>
+
+<li>
+<font size=-1>Si des messages sont reçus, ils sont traités par une fonction spécifique</font></li>
+
+<li>
+<font size=-1>Sortie du programme si l'utilisateur referme la fenêtre</font></li>
+</ol>
+<font size=-1>Comme vous pouvez le voir, la structure d'un programme Win est plutôt complexe comparée à un programme fonctionnant sous DOS. Mais le monde de Windows diffère résolument du monde de DOS. Les programmes Win doivent être capables de coexister paisiblement les uns avec les autres. Ils doivent suivre des règles très strictes. Chaque programmeur doit aussi être très stricte avec son style de programmation et d'habitudes.</font>
+<h3>
+<font color="#CC0000"><font size=+0>Contenu:</font></font></h3>
+<font size=-1>Ci-dessous voici le code source de notre programme ouvrant une simple fenêtre. Avant une plongée dans les entrailles de la programmation Win32 ASM, regardons quelques points importants qui soulageront votre programmation.</font>
+<ul>
+<li>
+<font size=-1>Vous devez mettre tous les 'Constants Windows', les structures et les prototypes de fonction dans un fichier INCLUDE (*.inc) et l'inclure au début de votre fichier .asm. Cela vous évitera de gros efforts de réécriture par vous même. Actuellement, la plupart des fichiers INCLUDE ,tel que windows.inc, sont complets. La totalité des fichiers INCLUDE forment le répertoire HUTCH que vous pouvez télécharger sur ma page. Vous pouvez aussi définir vos propres constants  et structures mais vous devez les mettre dans un fichier INCLUDE (*.inc) différent de 'windows.inc'.
+<BR>Les 'constants Windows', les 'structures' et les 'Prototypes de Fonction' sont toutes des instructions assembleur. Donc si vous n'avez pas compris, on écrit seulement des bouts de programme en ASM dans des fichiers *.inc et quand vous en avez besoin pour un de vos programmes, vos y faites référence grâce à une instruction spéciale :'INCLUDE…' 
+</font></li>
+
+<li>
+<font size=-1>Utilisez la directive<font color="#FFFF68"> includelib</font> pour indiquer quelle bibliothèque d'importation est employée par votre programme. Par exemple, si votre programme appelle la fonction MessageBox, vous devez mettre la ligne :</font></li>
+
+<ul><font color="#FF9800"><font size=-1>includelib user32.lib</font></font></ul>
+<font size=-1>au début de votre fichier .asm. Cette directive informe MASM que votre programme utilisera certaines fonctions dans cette bibliothèque d'importation. Si vos fonctions d'appels de programme ne font pas parti de la même bibliothèque, ajoutez juste un IncludeLib pour chaque bibliothèque que vous employez. En employant la directive IncludeLib, vous n'avez plus à vous inquiétez des bibliothèques d'importations. Vous pouvez employer /LIBPATH linker comme commutateur pour dire où se trouvent tous les libs et y faire ainsi référence.</font>
+<li>
+<font size=-1>En déclarant des prototypes de fonction API, des structures, ou des constants pour les inclure dans vos propres  fichiers, essayez de respecter les noms d'origines employés par les fichiers INCLUDE de Windows. Ça vous évitera bien des maux de tête à chercher quelque article dans la référence Win32 API.</font></li>
+
+<li>
+<font size=-1>Employez le fichier makefile.bat pour automatiser votre processus d'assemblage. Cela vous évitera encore de tapez pleins de lignes de code à chaque fois.</font></li>
+</ul>
+<b><font size=-1>.386</font></b>
+<br><b><font size=-1>.model flat,stdcall</font></b>
+<br><b><font size=-1>option casemap:none</font></b>
+<br><b><font size=-1>include \masm32\include\windows.inc</font></b>
+<br><b><font size=-1>include \masm32\include\user32.inc</font></b>
+<br><b><font size=-1>includelib \masm32\lib\user32.lib&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+<font color="#009900">; Fait appel à des fonctions dans user32.lib et kernel32.lib</font></font></b>
+<br><b><font size=-1>include \masm32\include\kernel32.inc</font></b>
+<br><b><font size=-1>includelib \masm32\lib\kernel32.lib</font></b>
+<p><b><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></b>
+<p><b><font size=-1>.DATA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#009900">&nbsp;&nbsp;
+; Initialise les DATA (ceux qui font déjà parti du programme)</font></font></b>
+<br><b><font size=-1>ClassName db "SimpleWinClass",0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#009900">&nbsp;
+; le nom de Class de votre fenêtre</font></font></b>
+<br><b><font size=-1>AppName db "Our First Window",0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#009900">
+; Le nom de votre fenêtre (c'est son titre)</font></font></b>
+<p><b><font size=-1>.DATA?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<font color="#009900">&nbsp;
+; Initialise les DATA (ceux qui ne font pas encores parti du programme. EX: les futures saisies au clavier).</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">hInstance HINSTANCE ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font color="#009900">; l'Instance handle de votre programme</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">.CODE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;&nbsp;
+; C'est ici que commence votre code.</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>start:</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">invoke GetModuleHandle, NULL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;
+; Récupère l'Instance handle de votre programme.</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font color="#009900">; Sous Win32, hmodule==hinstance mov hInstance,eax</font></font></b>
+<br><b><font color="#FFFFFF"><font size=-1>mov hInstance,eax</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">invoke GetCommandLine&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;
+; Obtient la command line. vous n'avez besoin d'appeler cette fonction QUE SI</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font color="#009900">; votre programme n'a pas encore de command line.</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>mov CommandLine,eax</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">invoke WinMain, hInstance,NULL,CommandLine,
+SW_SHOWDEFAULT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;
+; Appelle la fonction principale </font></font></b>
+<br>
+  <b><font size=-1><font color="#CCCCCC">invoke ExitProcess, eax&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;&nbsp; 
+  ; Sort de votre programme. Le code de sortie est retourné dans eax.</font></font></b> 
+<p><b><font color="#CCCCCC"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; LOCAL wc:WNDCLASSEX&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">
+; Créez des variables locales sur la pile</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL msg:MSG</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL hwnd:HWND</font></font></b>
+<p><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbSize,SIZEOF WNDCLASSEX&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">
+; Place les valeurs dans les membres de wc</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.style, CS_HREDRAW or CS_VREDRAW</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpfnWndProc, OFFSET WndProc</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbClsExtra,NULL</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbWndExtra,NULL</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; push&nbsp;
+hInstance</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; pop&nbsp;&nbsp;
+wc.hInstance</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hbrBackground,COLOR_WINDOW+1</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpszMenuName,NULL</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpszClassName,OFFSET ClassName</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; invoke LoadIcon,NULL,IDI_APPLICATION</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hIcon,eax</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hIconSm,eax</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; invoke LoadCursor,NULL,IDC_ARROW</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hCursor,eax</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; invoke RegisterClassEx,
+addr wc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">
+; register our window class</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; invoke CreateWindowEx,NULL,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ClassName,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR AppName,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+hwnd,eax</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; invoke ShowWindow,
+hwnd,CmdShow&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;&nbsp;
+; Affiche notre fenêtre sur le bureau</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; invoke UpdateWindow,
+hwnd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">
+; Régénérez le client area</font></font></b>
+<p><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; .WHILE TRUE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">
+; Création d'une boucle </font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; .ENDW</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;&nbsp;
+eax,msg.wParam&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;&nbsp;&nbsp;
+; Retoune le code de sortie dans eax</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>WinMain endp</font></font></b>
+<p><b><font color="#CCCCCC"><font size=-1>WndProc proc hWnd:HWND, uMsg:UINT,
+wParam:WPARAM, lParam:LPARAM</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; .IF uMsg==WM_DESTROY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+</font><font color="#009900">; si l'utilisateur ferme notre fenêtre...alors</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;
+; on quitte notre application</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; .ELSE</font></font></b>
+<br><b><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam&nbsp;&nbsp;&nbsp;</font><font color="#009900">&nbsp;
+; Default message processing</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; .ENDIF</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; xor eax,eax</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>WndProc endp</font></font></b>
+<p><b><font color="#CCCCCC"><font size=-1>end start</font></font></b>
+<h3>
+Analyse:</h3>
+<font color="#C0C0C0"><font size=-1>Vous pouvez être déconcertés par le fait qu'un programme ouvrant une simple fenêtre exige tant de codes. Mais la plupart de ces codes sont juste *une ossature commune pour tous les prog*. Ces codes vous pouvez les copier d'un fichier de code source à un autre. Ou si vous préférez, vous pourriez assembler quelques-uns de ces codes dans une bibliothèque pour être employés comme une sorte d''introduction' dans votre programme. Ensuite vous pourrez vous contenter d'écrire les lignes de codes dans la fonction WinMain. Où 'WinMain' est en fait un peu comme la procédure principale dans laquelle vous écrirez votre programme. Sachez que c'est ce que font les compilateurs C. Ils vous laissent écrire uniquement les codes de WinMain (ou dans WinMain) sans s'inquiéter du reste. Le seul inconvénient c'est que vous devez avoir une fonction nommée WinMain sinon les compilateurs C ne seront pas capables de combiner vos codes avec ceux de votre <I>INTRODUCTION</I>. Vous n'aurez pas de telles restrictions avec le langage Assembleur. Vous pouvez employer d'autres noms de fonction que 'WinMain' ou bien même aucune fonction du tout</font></font>
+<br><font color="#C0C0C0"><font size=-1>Soyez prévenus. Ça va être un long tutorial. On va analyser ce programme à mort!.</font></font>
+<ul><b><font color="#999900"><font size=-1>.386</font></font></b>
+<br><b><font color="#999900"><font size=-1>.model flat,stdcall</font></font></b>
+<br><b><font color="#999900"><font size=-1>option casemap:none</font></font></b>
+<p><b><font color="#999900"><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></b>
+<p><b><font color="#999900"><font size=-1>include \masm32\include\windows.inc</font></font></b>
+<br><b><font color="#999900"><font size=-1>include \masm32\include\user32.inc</font></font></b>
+<br><b><font color="#999900"><font size=-1>include \masm32\include\kernel32.inc</font></font></b>
+<br><b><font color="#999900"><font size=-1>includelib \masm32\lib\user32.lib</font></font></b>
+<br><b><font color="#999900"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></b></ul>
+<font color="#CCCCCC"><font size=-1>Les trois premières lignes sont "NECESSAIRES". .386 dit à MASM que nous avons l'intention d'employer le jeu d'instruction de processeur 80386 dans ce programme. .model flat,stdcall dit à MASM que notre programme emploie la mémoire plate adressant le modèle. C'est pourquoi nous employions le paramètre stdcall prenant par défaut cette  convention dans notre programme.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Ensuite c'est au tour du prototype de fonction pour WinMain. Puisque nous appellerons WinMain plus tard, nous devons définir son prototype de fonction d'abord, pour que nous puissions l'invoquer par la suite.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Nous devons inclure windows.inc au début du code source. Il contient les structures importantes et les constants qui sont employés par notre programme. Le fichier INCLUDE, windows.inc, est simplement un fichier texte. Vous pouvez l'ouvrir avec n'importe quel éditeur de texte. Notez s'il vous plaît que windows.inc ne contient pas toutes les structures et constants (encore). Pour ce qui est du HUTCH (le groupe de fichiers *.inc) j'y travaille.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Notre programme appelle les fonctions API qui résident dans user32.dll (CreateWindowEx, RegisterWindowClassEx, par exemple) et kernel32.dll (ExitProcess), donc nous devons lier notre programme avec ces deux bibliothèques d'importation. La question suivante : comment puis-je savoir qui importe la bibliothèque qui doit être lié avec mon programme ? La réponse : Vous devez savoir où résident les fonctions API appelées par votre programme. Par exemple, si vous appelez une fonction API dans gdi32.dll, vous devez vous lier avec gdi32.lib.</font></font>
+<br><font color="#CCCCCC"><font size=-1>C'est l'approche spécifique de MASM. Pour TASM, la bibliothèque d'importation  qui est liée à votre programme est uniquement : import32.lib. C'est beaucoup , beaucoup plus simple.</font></font>
+<ul><b><font color="#999900"><font size=-1>.DATA</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; ClassName
+db "SimpleWinClass",0</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; AppName&nbsp;
+db "Our First Window",0</font></font></b>
+<p><b><font color="#999900"><font size=-1>.DATA?</font></font></b>
+<br><b><font color="#999900"><font size=-1>hInstance HINSTANCE ?</font></font></b>
+<br><b><font color="#999900"><font size=-1>CommandLine LPSTR ?</font></font></b></ul>
+<font color="#CCCCCC"><font size=-1>Ci-dessus on trouve les 2 sections pour les "DATA".</font></font>
+<br><font color="#CCCCCC"><font size=-1>Dans .DATA, on déclare deux données terminées chacune par zéro : ClassName est le nom de notre classe de fenêtre  (de notre Window Class).<BR>'AppName' est le nom de notre fenêtre. Notez que les deux variables sont initialisées.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Dans .DATA?, Deux variables sont déclarées : HINSTANCE (l'Instance Handle de notre programme) et CommandLine (ligne de commande de notre programme). Ces types de données sont peu familières, HINSTANCE et LPSTR, sont vraiment de nouveaux noms pour DWORD. Vous pouvez les voir dans windows.inc. Notez que toutes les variables se trouvant dans la section .DATA ? ne sont pas initialisée, c'est-à-dire qu'elles ne doivent pas contenir de valeur spécifique en démarrage, mais nous réservons de l'espace pour notre future utilisation.</font></font>
+<ul><b><font color="#999900"><font size=-1>.CODE</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;start:</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; invoke
+GetModuleHandle, NULL</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+hInstance,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; invoke
+GetCommandLine</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;&nbsp;
+CommandLine,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; invoke
+WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; invoke
+ExitProcess,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp; .....</font></font></b>
+<br><b><font color="#999900"><font size=-1>end start</font></font></b></ul>
+<font color="#CCCCCC"><font size=-1>.CODE contient toutes vos instructions ASM. Vos codes doivent résider entre le label " Start : " et le label " End Start ". Le nom du label est arbitraire. Vous pouvez le nommer comme ça vous chante tant qu'il est unique et ne viole pas la convention de nom de MASM. Par exemple vous ne pouvez pas prendre le mot 'Mov' comme nom de label.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Notre première instruction est l'appel GetModuleHandle pour aller chercher l'Instance handle de notre programme. Sous Win32, l' Instance Handle et Module Handle sont les mêmes. Vous pouvez vous représenter l'Instance Handle comme le n° d'identification de votre programme. Il est employé comme  paramètre par plusieurs des fonctions API que notre programme doit appeler, donc c'est généralement une bonne IDée de le déclarer dès le début de notre programme.</font></font>
+<br><b><font color="#009900"><font size=-1>Notez : En réalité sous win32, l'Instance Handle est l'adresse linéaire de votre programme dans la mémoire.</font></font></b>
+<br><font color="#CCCCCC"><font size=-1>Après avoir fait appel à une fonction de Win32 (une API), la valeur de retour de cette fonction, est placée dans eax. Toutes les autres valeurs sont renvoyées par des variables que vous avez vous-même défini avant le Call qui appel cette fonction.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Une fonction Win32 (ou une procédure)  que vous appelez(Call) souvent préservera les Registres de segment ebx, edi, esi et le Registre ebp. Au contraire, ecx et edx sont considérés comme des Registres de travail et sont toujours indéfinis après la sortie d'une fonction de Win32 (sortie d'une procédure).</font></font>
+<br><b><font color="#009900"><font size=-1>Notez : n'espérez pas que les valeurs d'eax, ecx, edx soient préservés après un appel de fonction API.</font></font></b>
+<br><font color="#CCCCCC"><font size=-1>La ligne qui suit un appel (un call) à une fonction d'API, attend en retour une valeur dans eax. Dès que vous appelez une fonction API de Windows, vous devez utiliser la règle suivante : préservez puis rétablissez les valeurs des Registres de segment ebx, edi, esi et ebp après le retour de la fonction sinon votre programme plantera peu de temps après, ceci est valable pour vos procédures Windows et pour les fonctions de rappel de service Windows.</font></font>
+<br><font color="#CCCCCC"><font size=-1>L'appel 'GetCommandLine'est inutile si votre programme ne traite pas de ligne de commande. Dans cet exemple, je vous montre comment l'appeler dans le cas où vous en auriez besoin dans votre programme.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Vient ensuite l'appel à WinMain. Ici il reçoit quatre paramètres : l'Instance Handle de notre programme, l'Instance Handle du précédent Instance(objet) de notre programme, la Command Line et l'état de la fenêtre à sa première apparition. Sous Win32, il n'y a AUCUN Instance précédent(premier). Chaque programme est seul dans son espace d'adresse, donc la valeur d'hPrevInst est toujours 0. C'est un des restes de Win16 quand tous les programmes étaient encore exécutés dans un même espace d'adresses pour savoir si c'était le premier Instance ou non. Donc sous win16, si hPrevInst est NUL, alors c'est que c'est le premier Instance.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Notez : Vous n'êtes pas obligé de déclarer le nom de fonction en tant que : 'WinMain'. En fait, vous avez une totale liberté à cet égard. Et même, vous pouvez ne pas employer de fonction WinMain-équivalent du tout. Le but est de  placer votre code (votre véritable programme) à l'intérieur de la fonction WinMain à côté de GetCommandLine et votre programme sera toujours capable de fonctionner parfaitement.   </font></font>
+<br><font color="#CCCCCC"><font size=-1>A la sortie de WinMain, eax est rempli du code de sortie. Nous passons ce code de sortie comme paramètre à ExitProcess qui sert à terminer notre programme.</font></font>
+<p><b><font color="#999900"><font size=-1>WinMain proc Inst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>La susdite ligne est la déclaration de la fonction WinMain. Notez l'ensemble des paramètres qui suivent la directive PROC. Ce sont les paramètres que WinMain reçoit de la fonction qui l'appelle. Vous pouvez utiliser les noms de ces paramètres au lieu de vous servir de la pile pour pousser la valeurs de vos paramètres.</font></font>
+<p><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL wc:WNDCLASSEX</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL msg:MSG</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL hwnd:HWND</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>La directive LOCAL alloue de la mémoire  sur la pile pour des variables locales employées par la fonction. La totalité des directives LOCALES doivent être placées juste au-dessous de la directive PROC. La directive LOCAL est immédiatement suivie par  " le nom de la variable locale " ; " le type de variable ". Et donc 'LOCAL wc:WNDCLASSEX' dit à MASM de réserver de la mémoire sur la pile. Nous pourrons ensuite nous référer à wc dans notre code sans aucune difficulté engendrée par la manipulation de la pile. C'est vraiment une aubaine, je pense. le revers est le fait que les variables locales ne peuvent pas être employées à l'extérieur de la fonction, elles sont créés et seront automatiquement détruites quand la fonction retourne à l'appel. Un autre inconvénient est que vous ne pouvez pas initialiser des variables locales automatiquement parce qu'elles sont uniquement allouées dans la mémoire de la pile au moment seulement où la fonction est entrée. Vous devez les assigner manuellement avec les valeurs désirées après les directives 'LOCAL'.</font></font>
+<p><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbSize,SIZEOF WNDCLASSEX</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.style, CS_HREDRAW or CS_VREDRAW</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpfnWndProc, OFFSET WndProc</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbClsExtra,NULL</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.cbWndExtra,NULL</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; push&nbsp;
+hInstance</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; pop&nbsp;&nbsp;
+wc.hInstance</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hbrBackground,COLOR_WINDOW+1</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpszMenuName,NULL</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.lpszClassName,OFFSET ClassName</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; invoke LoadIcon,NULL,IDI_APPLICATION</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hIcon,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hIconSm,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; invoke LoadCursor,NULL,IDC_ARROW</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;&nbsp;
+wc.hCursor,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; invoke RegisterClassEx,
+addr wc</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>Les lignes ci-dessus sont vraiment simples par leur concept. Il s'agit juste de plusieurs lignes d'instruction regroupées. Le concept qui se cache derrière toutes ces lignes c'est d'initialiser la <B><I>Windows class</I></B>. Une 'Windows Class' n'est rien de plus que la première ébauche d'une fenêtre.  On définit donc plusieurs caractéristiques importantes d'une fenêtre comme son icône, son curseur, la fonction qui la contrôle, sa couleur etc. Vous définisez la fenêtre grâce à sa 'Windows Class'. C'est en quelque sorte le but de ce concept. Si vous voulez créer plusieurs fenêtres avec les mêmes caractéristiques, il serait temps de penser à stocker toutes ces caractéristiques dans un unique endroit (donc dans une procédure par exemple) et de s'y référer quand c'est nécessaire. Cet arrangement économisera des tonnes de la mémoire en évitant la duplication d'informations. Windows doit être très efficaces dans l'utilisation des ressources mémoires, qui restent encore rares. 
+<BR><FONT COLOR="#FFFFFF"><B>Faisons le point :</B></FONT> Dès que vous définissez votre propre fenêtre, vous devez définir ses caractéristiques grâce à l'instruction WNDCLASS ou WNDCLASSEX et ensuite appeler RegisterClass ou RegisterClassEx avant que vous ne soyez capables de créer votre fenêtre. Vous devrez donner une 'Windows Class' pour chaque type de fenêtre que vous voulez créer.
+</font></font>
+<br><font color="#CCCCCC"><font size=-1>Windows possède plusieurs 'Windows Class' déjà prédéterminées, comme les boutons et la boîte d'édition (pour entrer un texte). Pour ces fenêtres (ou ces commandes), vous n'avez pas besoin de déclarer une 'Windows Class', appelez juste CreateWindowEx avec le nom de classe prédéterminée.</font></font>
+<br><font color="#CCCCCC"><font size=-1>L'élément le plus important de WNDCLASSEX est lpfnWndProc. Lpfn attend un 'Pointeur Long' pour fonctionner. Sous Win32, il n'y a pas de Pointeur(proche) ou de Pointeur(lointain), mais un simple Pointeur grâce au nouveau modèle de mémoire Flat(PLAT). Mais c'est encore un reste des vieux jours de Win16. Chaque 'Windows Class' doit être associée à une procédure appelée par Windows. La procédure qui sert à créer vos fenêtres sera responsable du traitement de chaque message associée  la à Windows Class. Les fenêtres enverront des messages vers la procédure qui les gère pour lui notifier quels événements importants sont utilisés par ces fenêtres, comme l'utilisation du clavier ou de la souris. Il ne reste plus qu'à la procédure (qui s'occupe de la gestion des fenêtres) à répondre intelligemment à chaque message qu'il reçoit envoyé par une fenêtre. La plupart du temps vous écrirez des enchaînements d'événements dans cette procédure.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Ci-dessous, Je vous détaille la construction de la fonction WNDCLASSEX:</font></font>
+<p><b><font color="#CCCCCC"><font size=-1>WNDCLASSEX STRUCT DWORD</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; cbSize&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; style&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; lpfnWndProc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; cbClsExtra&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; cbWndExtra&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; hInstance&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; hIcon&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; hCursor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; hbrBackground&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; lpszMenuName&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; lpszClassName&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp; hIconSm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>WNDCLASSEX ENDS</font></font></b>
+<p><font size=-1><b><font color="#FFFF00">cbSize: </font></b><font color="#CCCCCC">La taille de la structure WNDCLASSEX en octets. Nous pouvons employer l'opérateur SIZEOF pour obtenir (initialiser) cette valeur.</font></font>
+<br><font size=-1><b><font color="#FFFF00">style: </font></b><font color="#CCCCCC">Le style (ou le type) de fenêtre créée pour cette 'Class'. Vous pouvez combiner plusieurs types ensembles en employant l'opérateur "or".</font></font>
+<br><font size=-1><b><font color="#FFFF00">lpfnWndProc: </font></b><font color="#CCCCCC">L'adresse de la procédure responsable de la gestion des fenêtres créées dans cette 'Class'.</font></font>
+<br><font size=-1><b><font color="#FFFF00">cbClsExtra: </font></b><font color="#CCCCCC">Indique le nombre d'octets supplémentaires à allouer en fonction de la structure(ses éléments) de la Windows Class choisie. Le système d'exploitation initialise les octets à zéro. Vous pouvez stocker des données spécifiques à la Windows Class ici.</font></font>
+<br><font size=-1><b><font color="#FFFF00">cbWndExtra: </font></b><font color="#CCCCCC">Indique le nombre d'octets supplémentaires à allouer en fonction de la 'Windows Instance'. Le système d'exploitation initialise les octets à zéro.</font></font>
+<br><font size=-1><b><font color="#FFFF00">hInstance: </font></b><font color="#CCCCCC">l'Instance Handle de ce module (de ce WNDCLASSEX).</font></font>
+<br><font size=-1><b><font color="#FFFF00">hIcon: </font></b><font color="#CCCCCC">Handle de l'icône. Obtenez-le après l'appel de 'LoadIcon' (ou en retour de l'appel de 'LoadIcon').</font></font>
+<br><font size=-1><b><font color="#FFFF00">hCursor: </font></b><font color="#CCCCCC">Handle du curseur. Obtenez-le près l'appel de 'LoadCursor'.</font></font>
+<br><font size=-1><b><font color="#FFFF00">hbrBackground: </font></b><font color="#CCCCCC">Couleur du fond de toutes les fenêtres créées dans cette 'Class'.</font></font>
+<br><font size=-1><b><font color="#FFFF00">lpszMenuName: </font></b><font color="#CCCCCC">L'Handle du menu des fenêtres créées par cette  'Class'. C'est une valeur par défaut.</font></font>
+<br><font size=-1><b><font color="#FFFF00">lpszClassName: </font></b><font color="#CCCCCC">Le nom de cette 'Class'.</font></font>
+<br><font size=-1><b><font color="#FFFF00">hIconSm: </font></b><font color="#CCCCCC">L'Handle d'une petite icône associée à cette 'Class' de fenêtres. Si cette valeur est NULLE, le système recherche dans la 'ressource d'icône' indiquée par le membre hIcon, une icône de la taille appropriée sera employée en tant que petite icône.</font></font>
+<p><b><font size=-1><font color="#006600">&nbsp;&nbsp;&nbsp;</font><font color="#999900">invoke CreateWindowEx, NULL,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ClassName,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR AppName,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,\</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>Après l'enregistrement de la Window Class, nous pouvons appeler CreateWindowEx pour créer notre fenêtre basée sur la Window Class ainsi définie. Remarquez qu'il y a 12 paramètres à cette fonction, beuurr ! ! !</font></font>
+<p><b><font color="#CCCCCC"><font size=-1>CreateWindowExA proto dwExStyle:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; lpClassName:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; lpWindowName:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; dwStyle:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; X:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; Y:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; nWidth:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; nHeight:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; hWndParent:DWORD
+,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; hMenu:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; hInstance:DWORD,\</font></font></b>
+<br><b><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp; lpParam:DWORD</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>On va voir la description détaillée de chaque paramètre :</font></font>
+<br><font size=-1><b><font color="#999900">dwExStyle: </font></b><font color="#CCCCCC">Styles de fenêtre supplémentaires. C'est le nouveau paramètre qui est ajouté à la vieille fonction 'CreateWindow'. Vous pouvez mettre des nouveaux styles de fenêtre pour Windows 95 & NT ici. En temps normal, vous pouvez spécifier votre style de fenêtre ordinaire dans dwStyle, mais si vous voulez certains styles spéciaux pour une fenêtre 'tip top', vous devez les spécifier ici. Vous devez employer un NULL(un 0) si vous ne voulez pas de styles de fenêtre supplémentaires.</font></font>
+<br><font size=-1><b><font color="#999900">lpClassName: </font></b><font color="#CCCCCC">(obligatoire).L'adresse de la suite de caractères ASCII contenant le nom de la Window Class que vous voulez employer en tant que gabarit pour cette fenêtre. La Class peut être votre propre Class que vous venez de créer ou bien une Window Class prédéterminée. Comme exposé ci-dessus, chaque fenêtre que vous avez créée doit être basée sur une Window Class. (Normal ! , puisque la Window Class sert justement à définir les propriétés de la fenêtre à créer)</font></font>
+<br><font size=-1><b><font color="#999900">lpWindowName: </font></b><font color="#CCCCCC">Adresse de la suite de caractères ASCII contenant le nom de la fenêtre. Sera en fait la titre de la fenêtre (en haut à gauche). Si ce paramètre est NUL, la barre de titre de la fenêtre sera vide.</font></font>
+<br><font size=-1><b><font color="#999900">dwStyle: </font></b><font color="#CCCCCC">C'est le style de la fenêtre. Vous pouvez spécifier ici l'apparition de la fenêtre. Mettre une valeur NULLE pour ce paramètre dwSTYLE est possible mais la fenêtre n'aurait aucune boîte de menu, n'aurait ni les boutons de réduction-agrandissement  ni aucun autre bouton. La fenêtre n'aurait pas beaucoup d'intérêt. Vous devrez même appuyer sur Alt+F4 pour la refermer. Le style de fenêtre le plus commun est le paramètre 'WS_OVERLAPPEDWINDOW' (et non pas le paramètre NUL). Ainsi vous pouvez combiner plusieurs styles de fenêtre grâce à l'opérateur "ou"  pour faire apparaître la fenêtre que vous désirez. Le style WS_OVERLAPPEDWINDOW est en réalité une combinaison de styles des fenêtres les plus communes.</font></font>
+<br><font size=-1><b><font color="#999900">X,Y: </font></b><font color="#CCCCCC">C'est la coordonnée du coin supérieur gauche de la fenêtre. Normalement on prend le paramètre CW_USEDEFAULT comme valeur, comme ça Windows décidera pour vous où placer la fenêtre sur le bureau.</font></font>
+<br><font size=-1><b><font color="#999900">nWidth, nHeight: </font></b><font color="#CCCCCC">Ce sont les largeur et hauteur de la fenêtre en pixels. Vous pouvez aussi employer CW_USEDEFAULT pour laisser Windows choisir la largeur appropriée et la hauteur à votre place.</font></font>
+<br><font size=-1><b><font color="#999900">hWndParent: </font></b><font color="#CCCCCC">C'est l'Handle de la fenêtre parente de votre fenêtre (si celle-ci existe). Ce paramètre indique à Windows si cette fenêtre est un enfant (Window Child)  d'une autre fenêtre et, si elle l'est, qui est la fenêtre parente.  Notez que ce n'est pas la même relation Parent-Enfant que les 'multiple document interface' ou (MDI). Les 'Window Child' n'ont pas forcément les mêmes caractéristiques que leur 'Window Parent'. Ces caractéristiques sont uniquement spécifiques à l'utilisation interne de chaque fenêtre. Si la fenêtre parente est détruite, toutes ses fenêtres enfant seront détruites automatiquement. C'est vraiment très simple. Dans notre exemple, il y a seulement une fenêtre, donc ce paramètre reste NULL.</font></font>
+<br><font size=-1><b><font color="#999900">hMenu: </font></b><font color="#CCCCCC">C'est l'Handle du menu de la fenêtre. Il est NULLsi la Class Menu est utilisée. Revenez en arrière à un des membres de l'instruction WNDCLASSEX, soit 'lpszMenuName'. lpszMenuName indique le menu par  *default* pour la 'Window Class'. Chaque fenêtre de cette Window Class aura le même menu par défaut. À moins que vous ne spécifiiez un menu *overriding* pour une fenêtre spécifique via son paramètre hMenu. hMenu est en réalité un paramètre à double usage. Si la fenêtre que vous souhaitez créer utilise un 'Type de Fenêtre' (Style) prédéterminé (c'est-à-dire un contrôle), un tel contrôle ne peut pas posséder de menu. hMenu est employé comme ID de ce contrôle au lieu de cela. Windows peut décider si hMenu est vraiment un Handle de menu ou un contrôle ID en regardant le paramètre lpClassName. Si c'est le nom d'une Window Class prédéterminée, hMenu est un contrôle ID. Si ce n'est pas, ce sera alors l' Handle du menu de votre fenêtre.</font></font>
+<br><font size=-1><b><font color="#999900">hInstance: </font></b><font color="#CCCCCC">l'Instance Handle pour le module (la partie) du programme créant la fenêtre.</font></font>
+<br><font size=-1><b><font color="#999900">lpParam: </font></b><font color="#CCCCCC">Le pointeur facultatif pour des données a passer à la fenêtre. Il est employé par la fenêtre MDI pour passer les données CLIENTCREATESTRUCT. Normalement, cette valeur est mise au NUL, signifiant que l'on ne passe aucunes données via CreateWindow (). La fenêtre peut prendre la valeur de ce paramètre après l'appel à la fonction GetWindowLong.</font></font>
+<p><b><font size=-1><font color="#006600">&nbsp;</font><font color="#999900">&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; invoke ShowWindow,
+hwnd,CmdShow</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; invoke UpdateWindow,
+hwnd</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>En retour couronné de succès de CreateWindowEx, l'Handle de la fenêtre est placée dans eax. Nous devons garder cette valeur pour une utilisation future. La fenêtre que nous venons de créer n'est pas automatiquement affichée. Vous devez appeler 'ShowWindow' avec l'Handle de fenêtre et la *résolution* désirée de la fenêtre pour la faire apparaître à l'écran. Ensuite vous pourrez appeler 'UpdateWindow' pour ordonner à votre fenêtre de repeindre son secteur de client (d'afficher son contenu). Cette fonction est utile à chaque fois que vous voulez mettre à jour le contenu du secteur de client. Vous pouvez omettre cet appel quoique.</font></font>
+<p><b><font size=-1><font color="#006600">&nbsp;</font><font color="#999900">&nbsp;&nbsp;
+.WHILE TRUE</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp; .ENDW</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>Cette fois-ci, notre fenêtre est sur l'écran. Mais elle ne peut pas recevoir d'informations extérieur (comme une saisie de texte ou bien la détection de la pression d'un bouton). Donc nous devons l'informer de ce qui se passe. Nous faisons ça avec une boucle de message. Il y a seulement une boucle de message pour chaque module. Cette boucle de message vérifie continuellement les messages de Windows grâce à un 'Call GetMessage'. GetMessage passe une donnée à une structure de MESSAGE de Windows. Cette structure de MESSAGE sera remplie de l'information du message que Windows veut envoyer à une fenêtre dans le module. La fonction GetMessage ne retournera pas (ne reviendra pas à votre programme mais au contraire restera dans Kernel ou User) tant qu'un message (ex : appui sur un bouton) ne sera pas transmis pour une fenêtre dans le module. Pendant ce temps-là, Windows peut donner le contrôle à d'autres programmes. C'est en quelque sorte le fonctionnement en Multigestion de la plate-forme Win16. GetMessage renverra une erreur si le Message WM_QUIT est reçu dans la boucle de message, et ainsi nous termineront la boucle et irons vers la sortie du programme.</font></font>
+<br><font color="#CCCCCC"><font size=-1>TranslateMessage est une fonction utile qui saisie les entrées de clavier (à la volée) et produit un nouveau Message WM_CHAR qui est placé sur la file d'attente des messages. Le message avec WM_CHAR contient la valeur ASCII pour la touche pressée, c'est bien plus facile de procéder ainsi. Vous pouvez omettre cet appel si votre programme ne traite pas de frappes.</font></font>
+<br><font color="#CCCCCC"><font size=-1>'DispatchMessage' redirige les données d'un message( ex : envoi : on vient d'appuyer sur le bouton) à la procédure responsable de la fenêtre spécifique.</font></font>
+<p><b><font size=-1><font color="#006600">&nbsp;&nbsp;&nbsp;</font><font color="#999900">
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font color="#999900"><font size=-1>WinMain endp</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>Si la boucle de message se termine, le code de sortie est stocké dans le membre wParam de la structure de MESSAGE. Vous pouvez stocker ce code de sortie dans eax pour le rendre à Windows. Actuellement, Windows ne se sert pas de la valeur de retour, mais c'est mieux de respecter les règles.</font></font>
+<p><b><font color="#999900"><font size=-1>WndProc proc hWnd:HWND, uMsg:UINT,
+wParam:WPARAM, lParam:LPARAM</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>C'est notre procédure Win. Vous ne devez pas la nommer WndProc. Le premier paramètre, hWnd, est l' Handle de la fenêtre pour laquelle le message est destiné. uMsg est le message. Notez qu'uMsg n'est pas une structure de MESSAGE. C'est juste un numéro(nombre). Windows définit des centaines de messages, dont la plupart ne seront pas intéressants pour vos programmes. Windows enverra un message approprié à une fenêtre seulement si quelque chose d'intéressant arrive à cette fenêtre. La procédure qui traite vos fenêtres reçoit le message et y réagit intelligemment. wParam et lParam sont juste des paramètres supplémentaires pour l'utilisation de certains messages. Certains messages envoient des données d'accompagnement en plus du message lui-même. On passe ces données à la procédure de fenêtre au moyen de lParam et wParam.</font></font>
+<p><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; .IF uMsg==WM_DESTROY</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; .ELSE</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; .ENDIF</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; xor eax,eax</font></font></b>
+<br><b><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font color="#999900"><font size=-1>WndProc endp</font></font></b>
+<p><font color="#CCCCCC"><font size=-1>Vient ici la partie cruciale. C'est l'endroit où la plupart de l'intelligence de votre programme réside. Les codes qui répondent à chaque message de Windows sont dans la procédure de fenêtre (la procédure qui s'occupe du contrôle de votre fenêtre). Votre code doit vérifier le message de Windows pour voir si c'est un message intéressant. S'il l'est, faites tout ce que vous voulez faire en réponse à ce message et retourner ensuite la valeur zéro dans eax. S'il ne l'est pas, vous DEVEZ appeler l'API 'DefWindowProc', pour lui passer tous les paramètres que vous y avez reçu pour les traiter par défaut .'DefWindowProc' est une fonction API qui traite les messages qui ne sont pas intéressant pour votre programme.</font></font>
+<br><font color="#CCCCCC"><font size=-1>Le seul message que vous pouvez et DEVEZ  envoyer vers votre procédure qui traite les messages est WM_DESTROY. Ce message est envoyé à votre procédure de fenêtre pour la refermée. Au moment où votre procédure de fenêtre reçoit ce message, votre fenêtre est déjà enlevée de l'écran. C'est juste un renseignement comme quoi votre fenêtre a bien été détruite, vous devez vous préparer à retourner à Windows. Si vous utilisez cela, vous n'avez d'autres choix que de quitter. Si vous voulez avoir une chance d'arrêter la fermeture de votre fenêtre, vous devez utiliser le message WM_CLOSE. Maintenant revenons à WM_DESTROY, après cette fermeture radicale, vous devez appeler PostQuitMessage qui postera WM_QUIT en retour à votre module(traitement des message). WM_QUIT fera le retour de GetMessage avec la valeur zéro dans eax, qui à son tour, terminera la boucle de message et quittera Windows. Vous pouvez envoyer le message WM_DESTROY à votre propre procédure de fenêtre en appelant la fonction DestroyWindow.</font></font>
+<p>
+<hr WIDTH="100%">
+<center><b><font color="#009900"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

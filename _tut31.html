@@ -1,0 +1,795 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 31: ListView Control</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body STYLE="#text-align:justify;" bgcolor="#003366" text="#FFFFFF" link="#FFFFCC" vlink="#FFCCCC" alink="#CCFFCC">
+<h1 align="center"><font face="Arial, Helvetica, sans-serif" color="#FFFFCC">Tutorial 
+  31: Fichiers organisés sous la forme d'une liste<BR><FONT SIZE=+2>(Listview Control)</FONT></font></h1>
+<p><font face="MS Sans Serif" size="-1">Dans ce tutorial, nous allons voir comment créer et employer un listview control.</font></p>
+<p><font face="MS Sans Serif" size="-1">Downloadez <b><a href="files/tut31.zip" style="text-decoration:none">l'exemple</a></b>.</font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Théorie:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Un listview control est aussi un 'common controls' (tutorial 18) tout comme le treeview (tutorial 19), richedit etc. En fait vous l'utilisez couramment sans même connaître son nom. Par exemple, la fenêtre de droite de l'Explorateur Windows est un listview control. Un listview control sert à afficher sous forme d'une liste un groupe de fichiers. En fait, c'est un peu comme une liste, mais avec certaines capacités en plus.<br>
+  Vous pouvez créer un listview control de deux façons. La première méthode est aussi la plus simple : créez-le avec un éditeur de ressource. Simplement, n'oubliez pas ensuite d'appeler <font color="#FFFFCC"><b>InitCommonControls</b></font> dans votre code asm source. L'autre méthode c'est d'appeler <font color="#FFFFCC"><b>CreateWindowEx</b></font> dans votre code source. Vous devez spécifier le nom de la 'Window Class' (classe de fenêtre) correcte de ce control, c'est-à-dire <font color="#CCFFCC"><b>SysListView32</b></font>. La 'Window Class' &quot;WC_LISTVIEW&quot; n'est pas correcte.<br>
+  Il y a quatre types de vues des données, dans un listview control : une vue sous forme d'icônes, de petites icônes, sous forme de texte inscrit et des vues sous forme de détails. Vous pouvez voir les exemples de ces vues en choisissant Affichage-&gt;Grandes icônes (la vue d'icônes), Affichage-&gt;Petites icônes (la vue en petites icônes), Affichage-&gt; Liste (la vue de la liste) et Affichage-&gt; Détails (la vue sous forme de détails). Ces vues sont juste une méthode de représentation des données : Elles affectent seulement la présentation des données. Par exemple, vous pouvez avoir beaucoup de données dans un listview control, mais si vous préférez, vous pouvez voir certaines d'entre elles. La vue détail est la plus informative alors que les vues restantes donnent moins de renseignements. Vous pouvez spécifier la vue que vous voulez quand vous créez un listview control. Vous pourrez même changer de vue plus tard en appelant <font color="#FFFFCC"><b>SetWindowLong</b></font>, en spécifiant flag <font color="#CCFFCC"><b>GWL_STYLE</b></font>.</font></p>
+<p><font face="MS Sans Serif" size="-1"> Maintenant que nous savons comment créer un listview control, nous continuerons pour voir comment on peut l'employer. Je me concentrerai de la vue sous forme de détails qui fait appelle à pas mal des particularités du listview control. Les étapes dans l'utilisation d'un listview control sont les suivantes :</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Créez le listview control avec <font color="#FFFFCC"><b>CreateWindowEx</b></font >, et indiquez <font color="#CCFFCC"><b>SysListView32</b></font> comme class name. Vous pouvez spécifier la vue initiale à ce niveau là.</font></li>
+  <li><font face="MS Sans Serif" size="-1">(Si elles existes) Créez et initialisez des listes d'images (Tutorial 19) pour les associer aux noms des fichiers du listview.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Insérez des colonnes dans listview control. Cette étapes est nécessaire si votre listview control emploie la vue 'détails'. Explication : revenez sous l'Explorateur Windows et mettez vous en vue 'détails'. Vous voyez bien qu'il y a plusieurs colonnes, une pour le nom des fichiers, une autre pour leur date de création, une pour leur emplacement sur votre Ddur.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Insérez des items et des sous-items dans votre listview control. ex: Nom, Taille ,Type ,Modifier...</font></li>
+</ol>
+<h4><font face="Arial, Helvetica, sans-serif">Colonnes</font></h4>
+<p><font face="MS Sans Serif" size="-1">Dans la vue 'détails', il y a une ou plusieurs colonnes. Ces données qui sont mises dans différentes colonnes (en vue détails), représentes en fait un tableau de données : les données sont arrangées dans des rangées et des colonnes. Vous devez avoir au moins une colonne dans votre listview control (uniquement vrai pour la vue 'détails'). Pour les autres vues, vous n'avez pas besoin d'insérer de colonne parce qu'il nous faut une et seulement une seule colonne pour ces vues là.<br>
+  Vous pouvez insérer une colonne en envoyant <font color="#CCFFCC"><b>LVM_INSERTCOLUMN</b></font> au listview control.</font></p>
+<blockquote> 
+  <p><font face="MS Sans Serif" size="-1"><b>LVM_INSERTCOLUMN</b><br>
+    wParam = iCol (nombre de colonnes)<br>
+    lParam = pointe sur la structure <font color="#CCFFCC"><b>LV_COLUMN</b></font> </font></p>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">iCol est le nombre de colonnes, en partant de 0.<br>
+  <font color="#CCFFCC"><b>LV_COLUMN</b></font> contient l'information sur la colonne qui doit être insérée. Voici sa définition :</font></p>
+<blockquote>
+  <p><font face="Fixedsys">LV_COLUMN STRUCT <br>
+    &nbsp;&nbsp;imask dd ? <br>
+    &nbsp; fmt dd ? <br>
+    &nbsp; lx dd ? <br>
+    &nbsp; pszText dd ? <br>
+    &nbsp; cchTextMax dd ? <br>
+    &nbsp; iSubItem dd ? <br>
+    &nbsp; iImage dd ? <br>
+    &nbsp; iOrder dd ? <br>
+    LV_COLUMN ENDS </font></p>
+</blockquote>
+<table border="1" cellspacing="2" cellpadding="2" align="center">
+  <tr bgcolor="#006666"> 
+    <th><b><font face="MS Sans Serif" size="-1">Noms</font></b></th>
+    <th><font face="MS Sans Serif" size="-1">Définitions</font></th>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">imask</font></b></td>
+    <td> 
+      <p><font face="MS Sans Serif" size="-1">Représente une collection de flags qui indique quels membres dans cette structure sont valides. Pourquoi utiliser ce membre ?, c'est pour ne pas que tous les membres dans cette structure soient employés en même temps. Seulement quelques membres sont employés dans certaines situations. Et cette structure est utilisée, à la fois pour les Entrées et les Sorties. C'est pourquoi il est important que vous *marquiez* les membres qui seront employés dans cet appel de Windows pour qu'il sache que ces membres sont valides. Voici les flags disponibles :</font></p>
+      <p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">LVCF_FMT</font></b> 
+        = Le membre <font color="#FFFFCC"><b>fmt</b></font> est valide. <br>
+        <font color="#CCFFCC"><b>LVCF_SUBITEM</b></font> = Le membre <font color="#FFFFCC"><b>iSubItem</b></font> est valide.<br>
+        <font color="#CCFFCC"><b>LVCF_TEXT</b></font> = Le membre <font color="#FFFFCC"><b>pszText</b></font> est valide. <br>
+        <font color="#CCFFCC"><b>LVCF_WIDTH</b></font> = Le membre <font color="#FFFFCC"><b>lx</b></font> est valide.</font></p>
+      <p><font face="MS Sans Serif" size="-1">Vous pouvez combiner ces flags. Par exemple, si vous voulez déclarer le titre de la colonne (comme 'taille' par exemple, ou bien 'nom' ou 'modifié'), vous devez donner l'indicateur qui pointe sur la chaîne de caractères dans le membre <font color="#FFFFCC"><b>pszText</b></font>. Et vous <font color="#FFCC33"><b>devez</b></font> dire à Windows que le membre pszText contient des données en rajoutant le flag <font color="#CCFFCC"><b>LVCF_TEXT</b></font> dans ce champ, sinon Windows ne tiendra pas compte de la valeur (du texte) dans <font color="#FFFFCC"><b>pszText</b></font>. </font></p>
+    </td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">fmt</font></b></td>
+    <td> 
+      <p><font face="MS Sans Serif" size="-1">Indique à quel endroit doivent être placées les items et sous-items à l'intérieur des colonnes. Les valeurs disponibles sont :</font></p>
+      <p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">LVCFMT_CENTER</font></b> = Texte centé. <br>
+        <font color="#CCFFCC"><b>LVCFMT_LEFT</b></font> = Texte aligné à gauche. 
+        <br>
+        <font color="#CCFFCC"><b>LVCFMT_RIGHT</b></font> = Texte aligné à droite.</font></p>
+    </td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">lx</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Est la largeur de la colonne, en pixels. Vous pourrez plus tard la changer avec <font color="#FFFFCC"><b>LVM_SETCOLUMNWIDTH</b></font>. </font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">pszText</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Dans le cas où cette structure est employée pour afficher les propriétés de la colonne, elle contient le pointer qui est sur le nom de la colonne. Par contre si cette structure est employée pour recupérer les propriétés d'une colonne, ce champ contient la valeur d'un pointer qui 'pointe' sur un assez grand buffer pour qu'il puisse recevoir le nom de la colonne qui sera renvoyée. Dans ce cas, vous devez indiquer la taille de ce buffer dans <font color="#FFFFCC"><b>cchTextMax</b></font> ci-dessous. Vous pouvez ignorer <fonte color="#FFFFCC "><b>cchTextMax</b></font> si vous souhaitez seulement afficher le nom de la colonne, car un nom est forcément une chaîne de caractères ASCIIZ, et Windows peut facilement retrouver sa longueur.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">cchTextMax</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">Est la taille, en octets, du buffer indiqué, ci-dessus, dans <font color="#FFFFCC"><b>pszText</b></font>. Ce membre est seulement utilisé lorsque vous employez cette structure pour récupérer les renseignements d'une colonne. Si vous employez cette structure pour afficher les propriétés d'une colonne, ce champ est simplement ignoré.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><b><font face="MS Sans Serif" size="-1">iSubItem</font></b></td>
+    <td><font face="MS Sans Serif" size="-1">indique l'index du sous-item associé à cette colonne. Cette valeur est utilisée un peu comme un marqueur pour lequel le sous-item de cette colonne est associée. Si vous le souhaitez, même en mettant un nombre sans aucun sens dans ce paramètre votre listview control fonctionnera toujours les doits dans le nez. La meilleure démonstration de l'utilisation de ce paramètre, c'est quand vous avez un numéro de colonne et que vous avez besoin de savoir avec quel sous-item cette colonne est associée. Vous pouvez l'interroger le listview control en envoyant le message <font color="#CCFFCC"><b>LVM_GETCOLUMN</b></font>, en spécifiant <font color="#CCFFCC"><b>LVCF_SUBITEM</b></font> dans le membre <font color="#FFFFCC"><b>imask</b></font>. Le listview control remplira le membre <font color="#FFFFCC"><b>iSubItem</b></font> avec n'importe quelle valeur que vous avez spécifié dans ce paramètre quand la colonne a été insérée. Pour que cette méthode fonctionne, vous avez besoin que d'entrer dans ce paramètre le correcte index du sous-item. </font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1"><b>iImage et iOrder</b></font></td>
+    <td><font face="MS Sans Serif" size="-1">Est utilisé avec 'Internet Explorateur 3.0' et plus. Je n'ai pas plus de renseignements à leur sujet.</font></td>
+  </tr>
+</table>
+<p><font face="MS Sans Serif" size="-1">Ainsi après que le listview control est été créé, vous devez y insérer une ou plusieurs colonnes. Les colonnes ne sont pas nécessaires si vous ne projetez pas de faire fonctionner le listview control en vue 'détails'. Pour insérer une colonne, vous avez besoin de créer la structure <font color="#FFFFCC"><b>LV_COLUMN</b></font >, la remplir de l'information nécessaire, et indiquer le nombre de colonnes puis envoyer ensuite cette structure au listview control avec <font color="#CCFFCC"><b>LVM_INSERTCOLUMN </b></font> 
+  message.</font></p>
+<blockquote> 
+  <p><font face="Fixedsys" size="-1">&nbsp;&nbsp;&nbsp;LOCAL lvc:LV_COLUMN<br>
+    &nbsp;&nbsp;&nbsp;mov lvc.imask,LVCF_TEXT+LVCF_WIDTH <br>
+    &nbsp;&nbsp; mov lvc.pszText,offset Heading1 <br>
+    &nbsp;&nbsp; mov lvc.lx,150 <br>
+    &nbsp;&nbsp; invoke SendMessage,hList, LVM_INSERTCOLUMN,0,addr lvc </font></p>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1">Ce petit bout de code vous montre comment faire. Il détermine le texte d'en-tête de la colonne ainsi que sa largeur à envoyer au listview control, grâce au message <font color="#CCFFCC"><b>LVM_INSERTCOLUMN</b></font >. C'est aussi simple que ça.</font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Items et sous-items</font></h3>
+<p><font face="MS Sans Serif" size="-1">Les items sont les principales éléments dans un listview control. Dans les vues autres, que la vue 'détails', vous ne verrez que les items. Les sous-items sont les détails des items. Un unique item peut avoir un ou plus sous-items associés. Par exemple, si l'item est le nom d'un fichier, alors vous pouvez regarder (en tant que sous-items) ses attributs de fichier comme, sa taille, ou sa date de création. Dans la vue 'détails', la colonne extrême gauche contient les items et les colonnes restantes contiennent les sous-items. Vous pouvez vous représenter les items et leurs sous-items un peu comme  une base de données. L'item est la clef principale du tableau alors que les sous-items sont ses éléments de description dans ce même tableau. <br>
+  Au minimum, il y aura quelques Items dans votre listview control : les sous-items ne sont pas nécessaires. Cependant, si vous voulez présenter plus d'informations à l'utilisateur à propos de ces Items, vous devrez leurs associer leurs sous-items respectifs. De cette façon, l'utilisateur pourra voir les détails dans la vue 'détails'.<br>
+  On insère un item dans le listview control en envoyant le message <font color="#CCFFCC"><b> LVM_INSERTITEM</b></font>. Vous avez aussi besoin de lui passer l'adresse de la structure <font color="#CCFFCC"><b>LV_ITEM</b></font> dans <font color="#FFFFCC"><b>lParam</b></font>. <font color="#CCFFCC"><b>LV_ITEM</b></font> a la définition suivante :</font></p>
+<blockquote>
+  <p><font face="Fixedsys">LV_ITEM STRUCT <br>
+    &nbsp;&nbsp;imask dd ? <br>
+    &nbsp; iItem dd ? <br>
+    &nbsp; iSubItem dd ? <br>
+    &nbsp; state dd ? <br>
+    &nbsp; stateMask dd ? <br>
+    &nbsp; pszText dd ? <br>
+    &nbsp; cchTextMax dd ? <br>
+    &nbsp; iImage dd ? <br>
+    &nbsp; lParam dd ? <br>
+    &nbsp; iIndent dd ? <br>
+    LV_ITEM ENDS </font></p>
+</blockquote>
+<table border="1" cellspacing="2" cellpadding="2" align="center">
+  <tr bgcolor="#006666"> 
+    <th nowrap><font face="MS Sans Serif" size="-1">Nom</font></th>
+    <th nowrap><font face="MS Sans Serif" size="-1">Significations</font></th>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">imask</font></td>
+    <td><font face="MS Sans Serif" size="-1">Est un groupe de flags indiquant que les membres dans cette structure sont valides pour cet appel. En général, ce paramètre est semblable au membre <font color="#FFFFCC"><b>imask</b></font > de la structure <font color="#CCFFCC"><b>LV_COLUMN</b></font> vue plus haut. Référez vous à votre 'référence win32 api' pour plus de détail à propos des différents flags disponibles.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">iItem</font></td>
+    <td><font face="MS Sans Serif" size="-1">Est l'index de l'item auquel cette structure se réfère. L'index de base est zéro. Vous pouvez vous représenter ce paramètre comme le numéro de la &quot;rangée&quot; d'un tableau.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">iSubItem</font></td>
+    <td><font face="MS Sans Serif" size="-1">Est l'index du sous-item associé à l'item indiqué par <font color="#FFFFCC"><b>iItem</b> </font> ci-dessus. Vous pouvez vous représenter ce paramètre comme étant le numéro de la &quot;colonne&quot; d'un tableau. Par exemple, si vous souhaitez insérer un item dans un tout nouveau 'listview control' juste créé, la valeur à mettre dans <font color="#FFFFCC"><b>iItem</b></font> serait 0 (parce que cet item est le premier) et la valeur dans <font color="#FFFFCC"><b>iSubItem</b></font> serait aussi 0 (car nous voulons insérer cet item dans la première colonne).
+	  Si vous souhaitez associer un sous-item à cet item, alors le <font color="#FFFFCC"><b>iItem</b></font> représenterait l'index de l'item avec lequel vous voulez l'associer (dans cet exemple, c'est 0). Le <font color="#FFFFCC"><b>iSubItem</b></font> ne pourrait être que 1 ou plus que 1, suivant la colonne où vous voulez insérer ce sous-item. Par exemple, si votre listview control a 4 colonnes, la première colonne contiendra tous les Items. Les 3 colonnes restantes sont utilisées par les sous-items. Si vous voulez insérer un sous-item dans la 4ème colonne, vous devez mettre valeur 3 dans <font color="#FFFFCC"><b>iSubItem</b></font>.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">state</font></td>
+    <td> 
+      <p><font face="MS Sans Serif" size="-1">Ce membre contient les flags qui reflètent l'état de l'item. L'état de l'item peut changer à cause des actions de l'utilisateur, ou bien il peut être modifié par notre programme lui-même. 
+	  The state 
+        includes whether the item has the focus/is hilited/is selected for cut 
+        operation/is selected. In addition to the state flags, It can also contains 
+        one-based index into the overlay image/state image for use by the item. 
+        </font></p>
+    </td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">stateMask</font></td>
+    <td><font face="MS Sans Serif" size="-1">Puisque le membre 'state' ci-dessus peut contenir les flags qui définissent l'état de nos items, nous avons besoin de dire à Windows quelle valeur nous souhaitons mettre (ou remplacer si on a déjà définit son état). La valeur de ce paramètre sert à ça.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">pszText</font></td>
+    <td><font face="MS Sans Serif" size="-1">Est l'adresse de la chaîne de caractère qui sera utilisée en tant que titre pour votre item dans le cas où vous souhaitez mettre ou insérer un item. Si nous nous servons de cette structure pour récupérer la propriété d'un item donné, ce membre doit contenir l'adresse du buffer qui sera rempli avec le titre de cet item.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">cchTextMax</font></td>
+    <td><font face="MS Sans Serif" size="-1">Ce paramètre est uniquement utilisé lorsque vous employez cette structure pour recevoir des renseignements à propos de l'item. Dans ce cas, ce paramètre contient la taille en octets du buffer indiqué dans <font color="#FFFFCC"><b>pszText</b></font>, vu ci-dessus.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">iImage</font></td>
+    <td><font face="MS Sans Serif" size="-1">Est l'index d'une icône contenue dans l'imagelist. Cet index indique quelle icône doit être employé et associée avec votre item.</font></td>
+  </tr>
+  <tr bgcolor="#333300"> 
+    <td><font face="MS Sans Serif" size="-1">lParam</font></td>
+    <td><font face="MS Sans Serif" size="-1">C'est une valeur définie par l'utilisateur, laquelle sera réutilisée lorsque vous trierez les Items de votre listview control. Bref, lorsque vous direz au listview control de trier vos Items, celui-ci comparera les Items deux par deux. Il vous renverra les valeurs des <font color="#FFFFCC"><b>lParam</b></font> des deux Items, et vous pourrez ainsi décider lequel des deux doit être inscrit en premier. Si vous êtes encore un peu dans le coaltar avec ça, ne vous inquiéter pas. Vous en apprendrez plus tard, bien plus du triage.</font></td>
+  </tr>
+</table>
+<p><font face="MS Sans Serif" size="-1">On va récapituler les étapes clef pour l'ajout d'un item ou sous-item  dans le listview control.</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Créez une variable de type la structure <font color="#CCFFCC"><b>LV_item</b></font > </font></li>
+  <li><font face="MS Sans Serif" size="-1">Remplissez-la des informations nécessaires</font></li>
+  <li><font face="MS Sans Serif" size="-1">Envoyez le message <font color="#CCFFCC"><b>LVM_INSERTITEM</b></font> au listview control si vous voulez insérer un item. Ou si vous voulez *insert* un sous-item, envoyez <font color="#CCFFCC"><b>LVM_SETITEM</b></font> a la place. Ce sera plutôt le bordel si vous ne comprenez pas le rapport entre un item et ses sous-items. <font color="#FFCC33"><b>Les Sous-items représentent un peu les propriétés de l'item </b></font>. Ainsi vous pouvez insérer des items, mais pas des sous-items et vous ne pouvez pas avoir un sous-item sans avoir un item qui lui soit associé. C'est pourquoi pour ajouter un sous-item vous avez besoin d'envoyer le message <font color="#CCFFCC"><b>LVM_SETITEM</b></font> au lieu de <font color="#CCFFCC"><b>LVM_INSERTITEM</b></font>.  </font></li>
+</ol>
+<h3><font face="Arial, Helvetica, sans-serif">Messages d'ordres et messages de réponses dans le ListView</font></h3>
+<p><font face="MS Sans Serif" size="-1">Maintenant que vous savez comment créer et remplir un ListView control, l'étape suivante c'est de communiquer avec lui. Le ListView control communique avec la fenêtre parente grâce à des messages et des avis. La fenêtre parente peut commander le ListView control en lui envoyant des messages. En retour, le ListView control fait le contraire, il informe sa fenêtre parente des événements importants ou intéressants grâce à <font color="#CCFFCC"><b>WM_NOTIFY</b></font>, comme les autres 'common controls'.</font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Classer les items/sous-items</font></h3>
+<p><font face="MS Sans Serif" size="-1">Vous pouvez spécifier le type de triage par défaut dans le listview control en indiquant les types de tris <font color="#CCFFCC"><b>LVS_SORTASCENDING</b></font> ou bien <font color="#CCFFCC"><b>LVS_SORTDESCENDING</b></font> dans <font color="#FFFFCC"><b>CreateWindowEx</b></font>. Ces deux types classent les Items d'après leurs noms uniquement. Si vous voulez les classer selon un autre critère, vous devez mettre le message <font color="#CCFFCC"><b>LVM_SORTITEMS</b></font> à l'intention du listview control.</font></p>
+<blockquote>
+  <p><font face="MS Sans Serif" size="-1"><b>LVM_SORTITEMS<br>
+    wParam = lParamSort<br>
+    lParam = pCompareFunction</b></font></p>
+</blockquote>
+<p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">lParamSort</font></b> est une valeur définie par l'utilisateur laquelle on passera à la fonction de comparaison. Vous pouvez employer cette valeur de n'importe quelle façon, c'est à vous de voir.<br>
+  <font color="#CCFFCC"><b>pCompareFunction</b></font> est l'adresse de la fonction(type de tri) que l'utilisateur à défini pour son listview control. Cette fonction a le prototype suivant :</font></p>
+<p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">CompareFunc proto 
+  lParam1:DWORD, lParam2:DWORD, lParamSort:DWORD</font></b></font></p>
+<p><font face="MS Sans Serif" size="-1"><b><font color="#FFFFCC">lParam1</font></b> 
+  et <font color="#FFFFCC"><b>lParam2</b></font> sont les valeurs dans le membre de <font color="#FFFFCC"><b>lParam</b></font> de <font color="#CCFFCC"><b>LV_item</b></font> Lequel vous avez défini lorsque vous avez inséré vos Items dans le listview control.<br>
+  <font color="#FFFFCC"><b>lParamSort</b></font> est la valeur de wParam que vous avez envoyée avec <font color="#CCFFCC"><b>LVM_SORTITEMS </b></font></font></p>
+<p><font face="MS Sans Serif" size="-1">Quand le listview control reçoit le message <font color="#CCFFCC"><b>LVM_SORTITEMS</b></font>, il fait appel à la fonction de tri (ou de comparaison) indiquée par <font color="#FFFFCC"><b>lParam</b></font>, ainsi il nous retourne le résultat de la comparaison entre deux items. Bref, la fonction de comparaison servira à savoir lequel de deux items lui ayant été envoyé sera placé en premier par rapport à l'autre. La règle est simple : si la fonction renvoie une valeur négative, premier item (représenté par <font color="#FFFFCC"><b>lParam1</b></font>) doit être placé après l'autre. Si la fonction renvoie une valeur positive, cet item doit être placé en premier. Si les deux items sont égaux, un NULL sera renvoyé. 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Ce qui fait que cette méthode fonctionne, c'est la valeur de <font color="#FFFFCC"><b>lParam</b></font> qui se trouve dans la structure <font color="#CCFFCC"><b>LV_item</b></font>. Si vous avez besoin de trier des Items (comme lorsque l'utilisateur clique sur l'en-tête d'une colonne, essayez ça marche !), vous avez besoin d'imaginer une méthode de tri qui se servira des valeurs dans le membre lParam (IParam1 et IParam2). Dans cet exemple, j'ai mis l'index de l'item dans ce paramètre donc je peux obtenir d'autres informations à propos de ces items en envoyant le message <font color="#CCFFCC"><b>LVM_GETITEM</b></font>. Remarquez que lorsque les Items sont réarrangés, leurs index changent aussi . De cette façon, quand le tri est fini dans mon exemple, j'ai encore besoin de remettre à jour les valeurs dans lParam pour retrouver les nouveaux index. Si vous voulez trier les Items lorsque l'utilisateur clique sur l'en-tête d'une colonne, vous avez besoin de traiter le message d'avis <font color="#CCFFCC"><b>LVN_COLUMNCLICK</b></font> dans votre procédure de fenêtre. On passe <font color="#CCFFCC"><b>LVN_COLUMNCLICK</b></font> à votre proc de fenêtre grâce au message <font color="#CCFFCC"><b>WM_NOTIFY</b></font>.</font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Exemple:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Cet exemple crée un 'listview control' et le remplit avec les noms et les tailles des fichiers du dossier actuel où vous êtes. La vue par défaut sera la vue 'détails'. Dans la vue 'détails', vous pouvez cliquer sur les en-têtes de colonne et les Items seront classés par ordre croissant/décroissant (soit par nom, soit par taille). Vous pouvez choisir la vue que vous souhaitez grâce au menu. Quand vous double cliquez sur un item, une boîte de message affichera le nom de l'item que vous venez de sélectionner.</font></p>
+<p><font face="Fixedsys">.386 <br>
+  .model flat,stdcall <br>
+  option casemap:none <br>
+  include \masm32\include\windows.inc <br>
+  include \masm32\include\user32.inc <br>
+  include \masm32\include\kernel32.inc <br>
+  include \masm32\include\comctl32.inc <br>
+  includelib \masm32\lib\comctl32.lib <br>
+  includelib \masm32\lib\user32.lib <br>
+  includelib \masm32\lib\kernel32.lib <br>
+  <br>
+  WinMain proto :DWORD,:DWORD,:DWORD,:DWORD <br>
+  <br>
+  IDM_MAINMENU equ 10000 <br>
+  IDM_ICON equ LVS_ICON <br>
+  IDM_SMALLICON equ LVS_SMALLICON <br>
+  IDM_LIST equ LVS_LIST <br>
+  IDM_REPORT equ LVS_REPORT <br>
+  <br>
+  RGB macro red,green,blue <br>
+  &nbsp; xor eax,eax <br>
+  &nbsp; mov ah,blue <br>
+  &nbsp; shl eax,8 <br>
+  &nbsp; mov ah,green <br>
+  &nbsp; mov al,red <br>
+  endm <br>
+  <br>
+  .data <br>
+  ClassName db "ListViewWinClass",0 <br>
+  AppName db "Testing a ListView Control",0 <br>
+  ListViewClassName db "SysListView32",0 <br>
+  Heading1 db "Filename",0 <br>
+  Heading2 db "Size",0 <br>
+  FileNamePattern db "*.*",0 <br>
+  FileNameSortOrder dd 0 <br>
+  SizeSortOrder dd 0 <br>
+  template db &quot;%lu&quot;,0</font><font face="Fixedsys"><br>
+  <br>
+  .data? <br>
+  hInstance HINSTANCE ? <br>
+  hList dd ? <br>
+  hMenu dd ? <br>
+  <br>
+  .code <br>
+  start: <br>
+  &nbsp;&nbsp;invoke GetModuleHandle, NULL <br>
+  &nbsp; mov hInstance,eax <br>
+  &nbsp; invoke WinMain, hInstance,NULL, NULL, SW_SHOWDEFAULT <br>
+  &nbsp; invoke ExitProcess,eax <br>
+  &nbsp; invoke InitCommonControls <br>
+  WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD 
+  <br>
+  &nbsp;&nbsp;LOCAL wc:WNDCLASSEX <br>
+  &nbsp;&nbsp;LOCAL msg:MSG <br>
+  &nbsp; LOCAL hwnd:HWND<br>
+  <br>
+  &nbsp; mov wc.cbSize,SIZEOF WNDCLASSEX <br>
+  &nbsp; mov wc.style, NULL <br>
+  &nbsp; mov wc.lpfnWndProc, OFFSET WndProc <br>
+  &nbsp; mov wc.cbClsExtra,NULL <br>
+  &nbsp; mov wc.cbWndExtra,NULL <br>
+  &nbsp; push hInstance <br>
+  &nbsp; pop wc.hInstance <br>
+  &nbsp; mov wc.hbrBackground,COLOR_WINDOW+1 <br>
+  &nbsp; mov wc.lpszMenuName,IDM_MAINMENU <br>
+  &nbsp; mov wc.lpszClassName,OFFSET ClassName <br>
+  &nbsp; invoke LoadIcon,NULL,IDI_APPLICATION <br>
+  &nbsp; mov wc.hIcon,eax <br>
+  &nbsp; mov wc.hIconSm,eax <br>
+  &nbsp; invoke LoadCursor,NULL,IDC_ARROW <br>
+  &nbsp; mov wc.hCursor,eax <br>
+  &nbsp; invoke RegisterClassEx, addr wc <br>
+  &nbsp; invoke CreateWindowEx,NULL,ADDR ClassName,ADDR AppName, WS_OVERLAPPEDWINDOW,CW_USEDEFAULT, 
+  CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInst,NULL <br>
+  &nbsp; mov hwnd,eax <br>
+  &nbsp; invoke ShowWindow, hwnd,SW_SHOWNORMAL <br>
+  &nbsp; invoke UpdateWindow, hwnd <br>
+  &nbsp; .while TRUE <br>
+  &nbsp;&nbsp;&nbsp; invoke GetMessage, ADDR msg,NULL,0,0 <br>
+  &nbsp;&nbsp;&nbsp; .break .if (!eax) <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke TranslateMessage, ADDR msg <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke DispatchMessage, ADDR msg <br>
+  &nbsp; .endw <br>
+  &nbsp; mov eax,msg.wParam <br>
+  &nbsp; ret <br>
+  WinMain endp <br>
+  <br>
+  InsertColumn proc <br>
+  &nbsp;&nbsp;LOCAL lvc:LV_COLUMN <br>
+  <br>
+  &nbsp; mov lvc.imask,LVCF_TEXT+LVCF_WIDTH <br>
+  &nbsp; mov lvc.pszText,offset Heading1 <br>
+  &nbsp; mov lvc.lx,150 <br>
+  &nbsp; invoke SendMessage,hList, LVM_INSERTCOLUMN, 0, addr lvc<br>
+  &nbsp; </font><font face="Fixedsys">or lvc.imask,LVCF_FMT<br>
+  &nbsp; mov lvc.fmt,LVCFMT_RIGHT <br>
+  &nbsp; mov lvc.pszText,offset Heading2 <br>
+  &nbsp; mov lvc.lx,100<br>
+  &nbsp; </font><font face="Fixedsys">invoke SendMessage,hList, LVM_INSERTCOLUMN, 
+  1 ,addr lvc <br>
+  &nbsp; ret <br>
+  InsertColumn endp <br>
+  <br>
+  ShowFileInfo proc uses edi row:DWORD, lpFind:DWORD <br>
+  &nbsp; LOCAL lvi:LV_ITEM <br>
+  &nbsp; LOCAL buffer[20]:BYTE <br>
+  &nbsp; mov edi,lpFind <br>
+  &nbsp; assume edi:ptr WIN32_FIND_DATA <br>
+  &nbsp; mov lvi.imask,LVIF_TEXT+LVIF_PARAM <br>
+  &nbsp; push row <br>
+  &nbsp; pop lvi.iItem <br>
+  &nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp; lea eax,[edi].cFileName <br>
+  &nbsp; mov lvi.pszText,eax <br>
+  &nbsp; push row <br>
+  &nbsp; pop lvi.lParam <br>
+  &nbsp; invoke SendMessage,hList, LVM_INSERTITEM,0, addr lvi <br>
+  &nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp; inc lvi.iSubItem <br>
+  &nbsp; invoke wsprintf,addr buffer, addr template,[edi].nFileSizeLow <br>
+  &nbsp; lea eax,buffer <br>
+  &nbsp; mov lvi.pszText,eax <br>
+  &nbsp; invoke SendMessage,hList,LVM_SETITEM, 0,addr lvi <br>
+  &nbsp; assume edi:nothing <br>
+  &nbsp; ret <br>
+  ShowFileInfo endp <br>
+  <br>
+  FillFileInfo proc uses edi <br>
+  &nbsp; LOCAL finddata:WIN32_FIND_DATA <br>
+  &nbsp; LOCAL FHandle:DWORD <br>
+  <br>
+  &nbsp; invoke FindFirstFile,addr FileNamePattern,addr finddata <br>
+  &nbsp; .if eax!=INVALID_HANDLE_VALUE <br>
+  &nbsp;&nbsp;&nbsp; mov FHandle,eax <br>
+  &nbsp;&nbsp;&nbsp; xor edi,edi <br>
+  &nbsp;&nbsp;&nbsp; .while eax!=0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; test finddata.dwFileAttributes,FILE_ATTRIBUTE_DIRECTORY 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if ZERO?</font><br>
+  <font face="Fixedsys">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ShowFileInfo,edi, addr finddata <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc edi <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke FindNextFile,FHandle,addr finddata <br>
+  &nbsp;&nbsp; &nbsp;.endw <br>
+  &nbsp;&nbsp;&nbsp; invoke FindClose,FHandle <br>
+  &nbsp; .endif <br>
+  &nbsp; ret <br>
+  FillFileInfo endp <br>
+  <br>
+  String2Dword proc uses ecx edi edx esi String:DWORD <br>
+  &nbsp; LOCAL Result:DWORD <br>
+  <br>
+  &nbsp;&nbsp;mov Result,0 <br>
+  &nbsp;&nbsp;mov edi,String <br>
+  &nbsp; invoke lstrlen,String <br>
+  &nbsp; .while eax!=0 <br>
+  &nbsp;&nbsp;&nbsp; xor edx,edx <br>
+  &nbsp;&nbsp;&nbsp; mov dl,byte ptr [edi] <br>
+  &nbsp;&nbsp;&nbsp; sub dl,"0" <br>
+  &nbsp;&nbsp;&nbsp; mov esi,eax <br>
+  &nbsp;&nbsp;&nbsp; dec esi <br>
+  &nbsp;&nbsp;&nbsp; push eax <br>
+  &nbsp;&nbsp;&nbsp; mov eax,edx <br>
+  &nbsp;&nbsp;&nbsp; push ebx <br>
+  &nbsp;&nbsp;&nbsp; mov ebx,10 <br>
+  &nbsp;&nbsp;&nbsp; .while esi > 0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mul ebx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dec esi <br>
+  &nbsp;&nbsp;&nbsp; .endw <br>
+  &nbsp;&nbsp;&nbsp; pop ebx <br>
+  &nbsp;&nbsp;&nbsp; add Result,eax <br>
+  &nbsp;&nbsp;&nbsp; pop eax <br>
+  &nbsp;&nbsp;&nbsp; inc edi <br>
+  &nbsp;&nbsp;&nbsp; dec eax <br>
+  &nbsp; .endw <br>
+  &nbsp; mov eax,Result <br>
+  &nbsp; ret <br>
+  String2Dword endp <br>
+  <br>
+  CompareFunc proc uses edi lParam1:DWORD, lParam2:DWORD, SortType:DWORD <br>
+  &nbsp; LOCAL buffer[256]:BYTE <br>
+  &nbsp; LOCAL buffer1[256]:BYTE <br>
+  &nbsp; LOCAL lvi:LV_ITEM <br>
+  <br>
+  &nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp; lea eax,buffer <br>
+  &nbsp; mov lvi.pszText,eax <br>
+  &nbsp; mov lvi.cchTextMax,256 <br>
+  &nbsp; .if SortType==1 <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,1 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; mov edi,eax <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; sub edi,eax <br>
+  &nbsp;&nbsp;&nbsp; mov eax,edi <br>
+  &nbsp; .elseif SortType==2 <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,1 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; mov edi,eax <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; sub eax,edi <br>
+  &nbsp; .elseif SortType==3 <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcpy,addr buffer1,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcmpi,addr buffer1,addr buffer <br>
+  &nbsp; .else <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcpy,addr buffer1,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcmpi,addr buffer,addr buffer1 <br>
+  &nbsp; .endif <br>
+  &nbsp; ret <br>
+  CompareFunc endp <br>
+  <br>
+  UpdatelParam proc uses edi <br>
+  &nbsp;&nbsp; LOCAL lvi:LV_ITEM <br>
+  <br>
+  &nbsp;&nbsp; invoke SendMessage,hList, LVM_GETITEMCOUNT,0,0 <br>
+  &nbsp;&nbsp; mov edi,eax <br>
+  &nbsp;&nbsp; mov lvi.imask,LVIF_PARAM <br>
+  &nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp; mov lvi.iItem,0 <br>
+  &nbsp;&nbsp; .while edi>0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; push lvi.iItem <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; pop lvi.lParam <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; invoke SendMessage,hList, LVM_SETITEM,0,addr lvi <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; inc lvi.iItem <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; dec edi <br>
+  &nbsp;&nbsp; .endw <br>
+  &nbsp;&nbsp; ret <br>
+  UpdatelParam endp <br>
+  <br>
+  ShowCurrentFocus proc <br>
+  &nbsp;&nbsp; LOCAL lvi:LV_ITEM <br>
+  &nbsp;&nbsp; LOCAL buffer[256]:BYTE <br>
+  <br>
+  &nbsp;&nbsp; invoke SendMessage,hList,LVM_GETNEXTITEM,-1, LVNI_FOCUSED<br>
+  &nbsp;&nbsp; mov lvi.iItem,eax <br>
+  &nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp;&nbsp; lea eax,buffer <br>
+  &nbsp;&nbsp; mov lvi.pszText,eax <br>
+  &nbsp;&nbsp;&nbsp;mov lvi.cchTextMax,256 <br>
+  &nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEM,0,addr lvi <br>
+  &nbsp;&nbsp; invoke MessageBox,0, addr buffer,addr AppName,MB_OK <br>
+  &nbsp;&nbsp; ret <br>
+  ShowCurrentFocus endp <br>
+  <br>
+  WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM <br>
+  &nbsp;&nbsp;.if uMsg==WM_CREATE <br>
+  &nbsp;&nbsp;&nbsp; invoke CreateWindowEx, NULL, addr ListViewClassName, NULL, 
+  LVS_REPORT+WS_CHILD+WS_VISIBLE, 0,0,0,0,hWnd, NULL, hInstance, NULL <br>
+  &nbsp;&nbsp;&nbsp; mov hList, eax <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;invoke InsertColumn <br>
+  &nbsp;&nbsp;&nbsp; invoke FillFileInfo <br>
+  &nbsp;&nbsp;&nbsp; RGB 255,255,255 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETTEXTCOLOR,0,eax <br>
+  &nbsp;&nbsp;&nbsp; RGB 0,0,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETBKCOLOR,0,eax <br>
+  &nbsp;&nbsp;&nbsp; RGB 0,0,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETTEXTBKCOLOR,0,eax <br>
+  &nbsp;&nbsp;&nbsp; invoke GetMenu,hWnd <br>
+  &nbsp;&nbsp;&nbsp; mov hMenu,eax <br>
+  &nbsp;&nbsp;&nbsp; invoke CheckMenuRadioItem,hMenu,IDM_ICON,IDM_LIST, IDM_REPORT,MF_CHECKED 
+  <br>
+  &nbsp; .elseif uMsg==WM_COMMAND <br>
+  &nbsp;&nbsp;&nbsp; .if lParam==0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke GetWindowLong,hList,GWL_STYLE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and eax,not LVS_TYPEMASK <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov edx,wParam <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and edx,0FFFFh <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push edx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or eax,edx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetWindowLong,hList,GWL_STYLE,eax <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop edx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke CheckMenuRadioItem,hMenu,IDM_ICON,IDM_LIST, 
+  edx,MF_CHECKED <br>
+  &nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp; .elseif uMsg==WM_NOTIFY <br>
+  &nbsp;&nbsp;&nbsp; push edi <br>
+  &nbsp;&nbsp;&nbsp; mov edi,lParam <br>
+  &nbsp;&nbsp;&nbsp; assume edi:ptr NMHDR <br>
+  &nbsp;&nbsp;&nbsp; mov eax,[edi].hwndFrom <br>
+  &nbsp;&nbsp;&nbsp; .if eax==hList <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if [edi].code==LVN_COLUMNCLICK <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; assume edi:ptr NM_LISTVIEW <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if [edi].iSubItem==1 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if SizeSortOrder==0 
+  || SizeSortOrder==2 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SORTITEMS,1,addr 
+  CompareFunc <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke UpdatelParam 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov SizeSortOrder,1 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .else <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SORTITEMS,2,addr 
+  CompareFunc <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke UpdatelParam 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov SizeSortOrder,2 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .else <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if FileNameSortOrder==0 
+  || FileNameSortOrder==4 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SORTITEMS,3,addr 
+  CompareFunc <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke UpdatelParam 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov FileNameSortOrder,3 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .else <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SORTITEMS,4,addr 
+  CompareFunc <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke UpdatelParam 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov FileNameSortOrder,4 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; assume edi:ptr NMHDR <br>
+  &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;.elseif [edi].code==NM_DBLCLK <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke ShowCurrentFocus <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp; pop edi <br>
+  &nbsp; .elseif uMsg==WM_SIZE<br>
+  &nbsp;&nbsp;&nbsp; </font><font face="Fixedsys">mov eax,lParam <br>
+  &nbsp;&nbsp;&nbsp; mov edx,eax <br>
+  &nbsp;&nbsp;&nbsp; and eax,0ffffh <br>
+  &nbsp;&nbsp;&nbsp; shr edx,16 <br>
+  &nbsp;&nbsp;&nbsp; invoke MoveWindow,hList, 0, 0, eax,edx,TRUE <br>
+  &nbsp; .elseif uMsg==WM_DESTROY <br>
+  &nbsp;&nbsp;&nbsp; invoke PostQuitMessage,NULL <br>
+  &nbsp; .else <br>
+  &nbsp;&nbsp;&nbsp; invoke DefWindowProc,hWnd,uMsg,wParam,lParam <br>
+  &nbsp;&nbsp;&nbsp; ret <br>
+  &nbsp; .endif <br>
+  &nbsp; xor eax,eax <br>
+  &nbsp; ret <br>
+  WndProc endp <br>
+  end start </font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Analyse:</font></h3>
+<p><font face="MS Sans Serif" size="-1">La première chose que le programme fait lorsque la fenêtre principale est créée, c'est de créer notre listview control.</font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;.if uMsg==WM_CREATE <br>
+  &nbsp;&nbsp;&nbsp; invoke CreateWindowEx, NULL, addr ListViewClassName, NULL, 
+  LVS_REPORT+WS_CHILD+WS_VISIBLE, 0,0,0,0,hWnd, NULL, hInstance, NULL <br>
+  &nbsp;&nbsp;&nbsp; mov hList, eax </font></p>
+<p><font face="MS Sans Serif" size="-1">On appelle <font color="#FFFFCC"><b>CreateWindowEx</b></font>, en lui passant le nom de sa window class soit : &quot;SysListView32&quot;. La vue par défaut est la vue 'détails' définie par le style <font color="#CCFFCC"><b>LVS_REPORT</b></font>.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;invoke InsertColumn </font></p>
+<p><font face="MS Sans Serif" size="-1">Après que le listview control est été créé, nous y insérons des colonnes.</font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;LOCAL lvc:LV_COLUMN <br>
+  <br>
+  &nbsp; mov lvc.imask,LVCF_TEXT+LVCF_WIDTH <br>
+  &nbsp; mov lvc.pszText,offset Heading1 <br>
+  &nbsp; mov lvc.lx,150 <br>
+  &nbsp; invoke SendMessage,hList, LVM_INSERTCOLUMN, 0, addr lvc</font></p>
+<p><font face="MS Sans Serif" size="-1">Nous initialisons le label (son nom) et la largeur de la première colonne, qui sert au stockage des noms de fichiers, dans la structure <font color="#CCFFCC"><b>LV_COLUMN</b></font>. Donc nous avons besoin de mettre les flags <font color="#CCFFCC"><b>LVCF_TEXT</b></font> et <font color="#CCFFCC"><b>LVCF_WIDTH</b></font> dans <font color="#FFFFCC"><b>imask</b></font> . On rempli <font color="#FFFFCC"><b>pszText</b></font> avec l'adresse du label et <font color="#FFFFCC"><b>lx</b></font> avec la largeur de la colonne, en pixels. 
+Quand tout est prêt, nous envoyons le message <font color="#CCFFCC"><b>LVM_INSERTCOLUMN</b></font> au listview control, en lui passant cette structure.
+</font></p>
+<p><font face="Fixedsys"> &nbsp; or lvc.imask,LVCF_FMT<br>
+  &nbsp; mov lvc.fmt,LVCFMT_RIGHT </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand on en a fini avec l'insertion de la première colonne, nous en insérons une autre servant cette fois-ci au stockage des tailles de fichiers. Puisque nous avons besoin des tailles pour les aligner à droite dans la colonne, nous avons besoin de mettre le flag <font color="#CCFFCC"><b>LVCFMT_RIGHT</b></font> dans le membre <font color="#FFFFCC"><b>fmt</b></font>. Nous devons aussi mettre le flag <font color="#CCFFCC"><b>LVCF_FMT</b></font> dans imask, en plus de <font color="#CCFFCC"><b>LVCF_TEXT</b></font> et <font color="#CCFFCC"><b>LVCF_WIDTH</b></font>. </font></p>
+<p><font face="Fixedsys">&nbsp; mov lvc.pszText,offset Heading2 <br>
+  &nbsp; mov lvc.lx,100<br>
+  &nbsp; invoke SendMessage,hList, LVM_INSERTCOLUMN, 1 ,addr lvc </font></p>
+<p><font face="MS Sans Serif" size="-1">Le code restant est simple. On Met l'adresse du label (du titre de la colonne) dans <font color="#FFFFCC"><b>pszText</b></font> et sa largeur dans <font color="#FFFFCC"><b>lx</b></font>. On envoie alors le message <font color="#CCFFCC"><b>LVM_INSERTCOLUMN</b></font> au listview control, en indiquant le nombre de colonnes et l'adresse de la structure.</font></p>
+<p><font face="MS Sans Serif" size="-1">Quand les colonnes sont insérées, nous pouvons placer les Items dans notre listview control.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp; invoke FillFileInfo </font></p>
+<p><font face="MS Sans Serif" size="-1">FillFileInfo présente le code suivant.</font></p>
+<p><font face="Fixedsys">FillFileInfo proc uses edi <br>
+  &nbsp; LOCAL finddata:WIN32_FIND_DATA <br>
+  &nbsp; LOCAL FHandle:DWORD <br>
+  <br>
+  &nbsp; invoke FindFirstFile,addr FileNamePattern,addr finddata </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous appelons FindFirstFile pour obtenir l'information sur le premier fichier qui correspond à nos critères de recherche. FindFirstFile possède le prototype de fonction suivant :</font></p>
+<p><font face="MS Sans Serif" size="-1" color="#CCFFCC"><b>FindFirstFile proto 
+  pFileName:DWORD, pWin32_Find_Data:DWORD</b></font></p>
+<p><font face="MS Sans Serif" size="-1"><b><font color="#FFFFCC">pFileName</font></b> 
+  est l'adresse du nom du fichier qu'on chercher. Cette chaîne de caractères peut contenir des caractères de substitutions. Dans notre exemple, nous employons *.*, ce qui fait qu'on mène une recherche sur tous les fichiers du dossier actuel où on se trouve.<br>
+  <font color="#FFFFCC"><b>pWin32_Find_Data</b></font> est l'adresse de la structure <font color="#CCFFCC"><b>WIN32_FIND_DATA</b></font> laquelle sera remplie de l'information du fichier (si on l'a trouvé).</font></p>
+<p><font face="MS Sans Serif" size="-1">Cette fonction renvoie <font color="#CCFFCC"><b>INVALID_handle_VALUE</b></font> dans eax si aucun fichier correspondant à ce que l'on cherche n'a été trouvé. Sinon l'handle de la recherche est renvoyée, lequel sera utilisé dans les appels suivant <font color="#FFFFCC"><b>FindNextFile</b></font>.</font></p>
+<p><font face="Fixedsys"> &nbsp; .if eax!=INVALID_HANDLE_VALUE <br>
+  &nbsp;&nbsp;&nbsp; mov FHandle,eax <br>
+  &nbsp;&nbsp;&nbsp; xor edi,edi </font></p>
+<p><font face="MS Sans Serif" size="-1">Si un fichier est trouvé, on stocke l'handle de la recherche dans une variable et ensuite nous mettons edi à zéro pour pouvoir l'employé en tant qu'index pour les Items (c'est le numéro de rangée).</font></p>
+<p> <font face="Fixedsys">&nbsp;&nbsp;&nbsp;&nbsp;.while eax!=0<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; test finddata.dwFileAttributes,FILE_ATTRIBUTE_DIRECTORY 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if ZERO?</font></p>
+<p><font face="MS Sans Serif" size="-1">Dans cet exemple, je ne souhaite rien toucher dans les autres dossiers, donc je les filtre en vérifiant <font color="#CCFFCC"><b>dwFileAttributes</b></font>. Comme ça, si on trouve des fichiers qui ont un flag <font color="#CCFFCC"><b>FILE_ATTRIBUTE_DIRECTORY</b></font> associés, on saute par dessus grâce à l'appel FindNextFile.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  invoke ShowFileInfo,edi, addr finddata <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc edi <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif</font><font face="Fixedsys"><br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke FindNextFile,FHandle,addr finddata &nbsp;&nbsp; 
+  &nbsp;<br>
+  &nbsp;&nbsp;&nbsp; .endw <br>
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous insérons le nom et la taille du fichier dans le listview control en appelant la fonction ShowFileInfo. Donc on augmente le numéro de la rangée actuelle (dans edi). Finalement on continue à appeler <font color="#FFFFCC"><b>FindNextFile</b></font > pour chercher le fichier suivant dans le dossier actuel jusqu'à ce que <font color="#FFFFCC"><b>FindNextFile</b></font> retourne un 0 (Ce qui signifie qu'il n'y a plus de fichiers à chercher).</font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;&nbsp; invoke FindClose,FHandle <br>
+  &nbsp; .endif <br>
+  &nbsp; ret <br>
+  FillFileInfo endp </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand tous les fichiers dans le dossier actuel ont étés passés à la loupe, on doit refermer l'handle de la recherche.</font></p>
+<p><font face="MS Sans Serif" size="-1">Maintenant on va regarder la fonction <font color="#FFFFCC"><b>ShowFileInfo</b></font>. Cette fonction accepte deux paramètres, l'index de l'item (son numéro de rangée) et l'adresse de la structure <font color="#CCFFCC"><b>WIN32_FIND_DATA</b></font>.</font></p>
+<p><font face="Fixedsys">ShowFileInfo proc uses edi row:DWORD, lpFind:DWORD <br>
+  &nbsp; LOCAL lvi:LV_ITEM <br>
+  &nbsp; LOCAL buffer[20]:BYTE <br>
+  &nbsp; mov edi,lpFind <br>
+  &nbsp; assume edi:ptr WIN32_FIND_DATA </font></p>
+<p><font face="MS Sans Serif" size="-1">On stocke l'adresse de la structure <font color="#CCFFCC"><b>WIN32_FIND_DATA</b></font> dans edi.</font></p>
+<p><font face="Fixedsys"> &nbsp; mov lvi.imask,LVIF_TEXT+LVIF_PARAM <br>
+  &nbsp; push row <br>
+  &nbsp; pop lvi.iItem <br>
+  &nbsp; mov lvi.iSubItem,0 </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous donne le nom de l'item et sa valeur dans lParam donc nous mettons les flags <font color="#CCFFCC"><b>LVIF_TEXT</b></font> et <font color="#CCFFCC"><b>LVIF_PARAM</b></font> dans imask. Ensuite nous plaçons l'item dans la bonne rangée (dont on avait passé son numéro à la fonction) et puisque c'est l'item principal, on doit mettre un 0 dans iSubItem (car la première colonne, c'est la colonne 0).</font></p>
+<p><font face="Fixedsys"> &nbsp; lea eax,[edi].cFileName <br>
+  &nbsp; mov lvi.pszText,eax <br>
+  &nbsp; push row <br>
+  &nbsp; pop lvi.lParam </font></p>
+<p><font face="MS Sans Serif" size="-1">Ensuite on met l'adresse de son nom, (dans ce cas), le nom du fichier dans <font color="#FFFFCC"><b>pszText</b></font> de la structure <font color="#CCFFCC"><b>WIN32_FIND_DATA</b></font>. Puisque nous effectuons un tri dans le listview control, nous devons remplir <font color="#FFFFCC"><b>lParam</b></font> avec une valeur. Je souhaite mettre le numéro de rangée dans ce membre donc je peux me servir des renseignements de l'item grâce à son index pour le retrouver.</font></p>
+<p><font face="Fixedsys"> &nbsp; invoke SendMessage,hList, LVM_INSERTITEM,0, addr 
+  lvi </font></p>
+<p><font face="MS Sans Serif" size="-1">Lorsque tous les paramètres nécessaires dans <font color="#CCFFCC"><b>LV_item</b></font> sont remplis, on envoie le message <font color="#CCFFCC"><b>LVM_INSERTITEM</b></font> au listview control pour y insérer un item.</font></p>
+<p><font face="Fixedsys"> &nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp; inc lvi.iSubItem <br>
+  &nbsp; invoke wsprintf,addr buffer, addr template,[edi].nFileSizeLow <br>
+  &nbsp; lea eax,buffer <br>
+  &nbsp; mov lvi.pszText,eax </font></p>
+<p><font face="MS Sans Serif" size="-1">On place, dans la deuxième colonne, le sous-item associé à l'item qu'on vient juste d'insérer. Un sous-item peut seulement posséder un label (un titre). Donc on met <font color="#CCFFCC"><b>LVIF_TEXT</b></font> dans imask. Ensuite dans <font color="#FFFFCC"><b>iSubItem</b></font>, on indique la colonne dans laquelle le sous-item doit se trouver. Dans notre cas, nous  met <font color="#FFFFCC"><b>iSubItem</b></font> à 1 en l'incrémentant. Le label que nous utiliserons représentera 'la taille du fichier'. Cependant, nous devons d'abord le convertir en une chaîne de caractères en appelant <font color="#FFFFCC"><b>wsprintf</b></font>. C'est pourquoi nous mettons l'adresse de la chaîne de caractères dans <font color="#FFFFCC"><b>pszText</b> </font>. 
+  </font></p>
+<p><font face="Fixedsys"> &nbsp; invoke SendMessage,hList,LVM_SETITEM, 0,addr lvi <br>
+  &nbsp; assume edi:nothing <br>
+  &nbsp; ret <br>
+  ShowFileInfo endp <br>
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand tous les paramètres nécessaires à <font color="#CCFFCC"><b>LV_item</b></font> sont remplis, nous envoyons le message <font color="#CCFFCC"><b>LVM_SETITEM</b></font> à notre listview control, en lui passant l'adresse de la structure <font color="#CCFFCC"><b>LV_ITEM</b></font>. Remarquez que nous utilisons <font color="#CCFFCC"><b>LVM_SETITEM</b></font>, et non pas <font color="#CCFFCC"><b>LVM_INSERTITEM</b></font> parce qu'un sous-item est considéré comme étant une propriété de l'item. Donc rappelez vous de ça, c'est important, on *pose* (set) la propriété de l'item, mais on n'insère pas un nouvel item.</font></p>
+<p><font face="MS Sans Serif" size="-1">Lorsque tous les Items sont insérés dans le listview control, on défini le type de texte et les couleurs de fond de notre listview control.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp; RGB 255,255,255 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETTEXTCOLOR,0,eax <br>
+  &nbsp;&nbsp;&nbsp; RGB 0,0,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETBKCOLOR,0,eax <br>
+  &nbsp;&nbsp;&nbsp; RGB 0,0,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_SETTEXTBKCOLOR,0,eax </font></p>
+<p><font face="MS Sans Serif" size="-1">J'emploie la macro RGB pour convertir les valeurs rouge, verte, est bleue dans eax et les employer pour définir la couleur réelle que je souhaite obtenir. On défini les couleurs de premier plan et d'arrière plan du texte avec les messages <font color="#CCFFCC"><b>LVM_SETTEXTCOLOR </b></font> et <font color="#CCFFCC"><b>LVM_SETTEXTBKCOLOR</b></font>. On défini la couleur de fond de notre listview control en lui envoyant le message <font color="#CCFFCC"><b>LVM_SETBKCOLOR</b></font>.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp; invoke GetMenu,hWnd <br>
+  &nbsp;&nbsp;&nbsp; mov hMenu,eax <br>
+  &nbsp;&nbsp;&nbsp; invoke CheckMenuRadioItem,hMenu,IDM_ICON,IDM_LIST, IDM_REPORT,MF_CHECKED 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">On laisse l'utilisateur choisit ses vues grâce au menu. Donc on doit d'abord récupérer l'handle du menu. Pour aider l'utilisateur à retrouver la vue actuelle, on incorpore un système de bouton radio dans notre menu. L'item du menu qui est associé à la vue actuelle sera ainsi précédé d'un bouton tout rond. Pour faire ça, on doit appeler <font color="#FFFFCC"><b>CheckMenuRadioItem</b></font>. Cette fonction affichera un bouton radio juste devant l'item voulu dans votre menu.</font></p>
+<p><font face="MS Sans Serif" size="-1">Remarquez qu'on crée un listview control d'une largeur et d'une hauteur égales à 0. Elle sera redimensionnée plus tard à chaque fois que la fenêtre parente sera elle-même redimensionnée. De cette façon, on peut être sûr que la taille de notre listview control correspondra toujours à celle de la fenêtre parente. Dans notre exemple, on souhaite que le listview control remplisse la totalité du secteur de client de la fenêtre parente.</font></p>
+<p><font face="Fixedsys">&nbsp; .elseif uMsg==WM_SIZE<br>
+  &nbsp;&nbsp;&nbsp; </font><font face="Fixedsys">mov eax,lParam <br>
+  &nbsp;&nbsp;&nbsp; mov edx,eax <br>
+  &nbsp;&nbsp;&nbsp; and eax,0ffffh <br>
+  &nbsp;&nbsp;&nbsp; shr edx,16 <br>
+  &nbsp;&nbsp;&nbsp; invoke MoveWindow,hList, 0, 0, eax,edx,TRUE </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand la fenêtre parente reçoit le message WM_SIZE, le mot de poids faible de lParam contient la nouvelle largeur du secteur client et le mot de poids fort la nouvelle hauteur. Ensuite on appelle <font color="#FFFFCC"><b>MoveWindow</b></font> pour redimensionner le listview control pour qu'il recouvre le secteur client de la fenêtre parente, en entier.</font></p>
+<p><font face="MS Sans Serif" size="-1">Lorsque l'utilisateur sélectionne une des vue dans le menu. On doit faire en sorte de changer la vue du listview control en conséquence. On fait ça en mettant un nouveau style dans le listview control avec <font color="#FFFFCC"><b>SetWindowLong</b></font>. </font></p>
+<p><font face="Fixedsys">&nbsp; .elseif uMsg==WM_COMMAND <br>
+  &nbsp;&nbsp;&nbsp; .if lParam==0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke GetWindowLong,hList,GWL_STYLE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and eax,not LVS_TYPEMASK </font></p>
+<p><font face="MS Sans Serif" size="-1">La première chose à faire, c'est obtenir les styles actuels du listview control. Donc on purifie le vieux type de vue renvoyé dans les flags. <font color="#CCFFCC"><b>LVS_TYPEMASK</b></font> est une constante qui représente la valeur combinée des 4 types de vue (<font color="#CCFFCC"><b>LVS_ICON+LVS_SMALLICON+LVS_LIST+LVS_REPORT</b></font>). Ainsi quand on exécute l'opération <font color="#FFCCCC"><b>and</b></font> sur les types actuels de flags avec la valeur &quot;not LVS_TYPEMASK&quot;, ça équivaut à nettoyer le type de vue actuel.</font></p>
+<p><font face="MS Sans Serif" size="-1">Dans la conception du menu, je triche un peu. J'emploie le type de vue des constantes en tant qu'IDs du menu.</font></p>
+<p><font face="Fixedsys">IDM_ICON equ LVS_ICON <br>
+  IDM_SMALLICON equ LVS_SMALLICON <br>
+  IDM_LIST equ LVS_LIST <br>
+  IDM_REPORT equ LVS_REPORT </font></p>
+<p><font face="MS Sans Serif" size="-1">Ainsi quand la fenêtre parente reçoit le message WM_COMMAND, le type de vue voulu est dans le mot de poids faible de wParam pour représenter l'ID du menu.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov edx,wParam <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and edx,0FFFFh </font></p>
+<p><font face="MS Sans Serif" size="-1">On retrouvera le type de vue souhaité dans le mot de poids faible de wParam. Tout ce que nous devons faire c'est de mettre le mot de poids fort à 0 (je parle de wParam).</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push edx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or eax,edx </font></p>
+<p><font face="MS Sans Serif" size="-1">Et ajoutez le type de vue désiré aux styles déjà existants (moins le style de vue actuel) du listview control.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke SetWindowLong,hList,GWL_STYLE,eax 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Et mettez les nouveaux types avec  <font color="#FFFFCC"><b>SetWindowLong</b></font>.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; pop edx <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke CheckMenuRadioItem,hMenu,IDM_ICON,IDM_LIST, 
+  edx,MF_CHECKED &nbsp;&nbsp;&nbsp; <br>
+  &nbsp;&nbsp;&nbsp;.endif </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous avons aussi besoin de mettre le bouton radio devant l'item choisi dans notre menu. Ainsi on appelle <font color="#FFFFCC"><b>CheckMenuRadioItem</b></font>, en lui passant le type de vue actuel (en double, en tant qu'ID du menu).</font></p>
+<p><font face="MS Sans Serif" size="-1">Lorsque l'utilisateur clique sur l'en-tête de la colonne dans la vue 'détails', on fait en sorte de déclencher le comportement de triage des Items dans notre listview control. Nous devons répondre au message <font color="#CCFFCC"><b>WM_NOTIFY</b></font>.</font></p>
+<p><font face="Fixedsys">&nbsp; .elseif uMsg==WM_NOTIFY <br>
+  &nbsp;&nbsp;&nbsp; push edi <br>
+  &nbsp;&nbsp;&nbsp; mov edi,lParam <br>
+  &nbsp;&nbsp;&nbsp; assume edi:ptr NMHDR <br>
+  &nbsp;&nbsp;&nbsp; mov eax,[edi].hwndFrom <br>
+  &nbsp;&nbsp;&nbsp; .if eax==hList </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand on reçoit le message <font color="#CCFFCC"><b>WM_NOTIFY</b></font>, lParam contient le pointer qui est sur la structure <font color="#CCFFCC"><b>NMHDR</b></font>. On peut vérifier si ce message provient de notre listview control en comparant le membre <font color="#FFFFCC"><b>hwndFrom</b></font> dans <font color="#CCFFCC"><b>NMHDR</b></font> à l'handle de notre listview control. S'ils correspondent, alors on est sûr que cet avis provient bien de notre listview control.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if [edi].code==LVN_COLUMNCLICK 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; assume edi:ptr NM_LISTVIEW </font></p>
+<p><font face="MS Sans Serif" size="-1">S'il provient bien du listview control, on vérifie si le code est <font color="#CCFFCC"><b>LVN_COLUMNCLICK</b></font>. Et si c'est ça, ça signifie que l'utilisateur a cliqué sur l'en-tête de la colonne. Dans le cas où le code serait <font color="#CCFFCC"><b>LVN_COLUMNCLICK</b></font>, on est sûr que lParam contient le pointer qui est sur la structure <font color="#CCFFCC"><b>NM_LISTVIEW</b></font> laquelle est un 'superset' de la structure <font color="#CCFFCC"><b>NMHDR</b></font>. On aura alors besoin de savoir sur lequel des en-tête de colonne, l'utilisateur à cliqué. L'examen du membre <font color="#FFFFCC"><b>iSubItem</b></font> nous révèle ces renseignements. La valeur dans iSubItem peut être considérée comme le numéro de colonne, en commençant par 0 pour la première colonne.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if [edi].iSubItem==1 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if SizeSortOrder==0 
+  || SizeSortOrder==2 </font></p>
+<p><font face="MS Sans Serif" size="-1">Dans le cas où iSubItem est égal à 1, ça signifie que l'utilisateur à cliqué sur la deuxième colonne, (la taille). On utilise des variables d'état pour récupérer le statut actuel de l'ordre de triage. 0 signifie &quot;Pas encore trié&quot;, 1 signifie qu'&quot;on tri l'item en le faisant monté d'une place dans la hiérarchie&quot;, 2 signifie qu'&quot;on tri l'item en le faisant descendre dans la hiérarchie&quot; des items. Si les Items ou sous-items de la colonne n'ont pas été trié auparavant, ou on été trié en ayant perdu des places, on impose un tri pour les remonter.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  invoke SendMessage,hList,LVM_SORTITEMS,1,addr CompareFunc </font></p>
+<p><font face="Fixedsys"> </font><font face="MS Sans Serif" size="-1">On envoie le message <font color="#CCFFCC"><b>LVM_SORTITEMS</b></font> à notre listview control, en lui passant 1 dans wParam et l'adresse de notre fonction de tri dans lParam. Remarquez que la valeur dans wParam est définie par l'utilisateur, vous pouvez l'employer de la façon que vous le souhaitez. Je l'emploie en tant que méthode de triage dans cet exemple. Bon, on va d'abord jeter un coup d'oeil à la fonction de tri.</font></p>
+<p><font face="Fixedsys">CompareFunc proc uses edi lParam1:DWORD, lParam2:DWORD, 
+  SortType:DWORD <br>
+  &nbsp; LOCAL buffer[256]:BYTE <br>
+  &nbsp; LOCAL buffer1[256]:BYTE <br>
+  &nbsp; LOCAL lvi:LV_ITEM <br>
+  <br>
+  &nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp; lea eax,buffer <br>
+  &nbsp; mov lvi.pszText,eax <br>
+  &nbsp; mov lvi.cchTextMax,256 </font></p>
+<p><font face="MS Sans Serif" size="-1">Dans la fonction de tri, le listview control passera les lParams (provenant de LV_item) de deux Items dont il a besoin de comparer pour les triés l'un par rapport à l'autre, soit lParam1 et lParam2. Vous vous rappellerez qu'on a mis l'index des l'items dans lParam. Ainsi on peut récupérer l'information des Items en interrogeant le listview control en employant ces index. Les renseignements dont nous avons besoin sont les labels (leurs noms) des Items / sous-items étant triés. Ainsi on prépare la structure <font color="#CCFFCC"><b >LV_ITEM</b></font> dans ce but, en déclarant <font color="#CCFFCC"><b>LVIF_TEXT</b></font> dans <font color="#FFFFCC"><b>imask</b></font> et l'adresse du buffer dans <font color="#FFFFCC"><b>pszText</b></font> et la taille du buffer dans <font color="#FFFFCC"><b>cchTextMax</b></font>. </font></p>
+<p><font face="Fixedsys"> &nbsp; .if SortType==1 <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,1 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Si la valeur dans SortType est 1 ou 2, on sait que la colonne (de taille) a été cliquée. 1 signifie que les Items ont été triés selon leurs tailles dans un ordre montant. 2 signifie le contraire. Ainsi, on impose <font color="#FFFFCC"><b>iSubItem</b></font> à 1 (pour spécifier la colonne de taille) et on envoie le message <font color="#CCFFCC"><b>LVM_GETITEMTEXT</b></font> à notre listview control pour obtenir le label (le nom) de la chaîne de caractères (de taille) du sous-item.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; mov edi,eax </font></p>
+<p><font face="MS Sans Serif" size="-1">On cache plus ou moins la taille de la chaîne de caractères dans une valeur Dword avec la fonction String2Dword que j'ai écrite. Elle renvoie cette valeur Dword dans eax. Et en plus on la stocke dans edi pour la trier par la suite.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr 
+  lvi <br>
+  &nbsp;&nbsp;&nbsp; invoke String2Dword,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; sub edi,eax <br>
+  &nbsp;&nbsp;&nbsp; mov eax,edi </font></p>
+<p><font face="MS Sans Serif" size="-1">Faites de même avec la valeur dans lParam2. Quand nous avons les tailles des deux fichiers, nous pouvons alors les comparer. <br> La règle de la fonction de tri est définie ainsi :</font></p>
+<ul>
+  <li><font face="MS Sans Serif" size="-1">Si le premier item doit être placé avant l'autre, vous devez renvoyer une valeur négative dans eax</font></li>
+  <li><font face="MS Sans Serif" size="-1">Si le premier item doit être placé après le second, vous devez renvoyer une valeur positive dans eax</font></li>
+  <li><font face="MS Sans Serif" size="-1">Si les deux Items sont égaux, on renvoie un zéro dans eax.</font></li>
+</ul>
+<p><font face="MS Sans Serif" size="-1">Dans ce cas, on souhaite trier les Items selon leurs critères de tailles par ordre croissant. Donc on peut utiliser la ruse d'une simple soustraction des tailles des deux items et renvoyer le résultat dans eax.</font></p>
+<p><font face="Fixedsys">&nbsp; .elseif SortType==3 <br>
+  &nbsp;&nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam1,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcpy,addr buffer1,addr buffer <br>
+  &nbsp;&nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEMTEXT,lParam2,addr lvi 
+  <br>
+  &nbsp;&nbsp;&nbsp; invoke lstrcmpi,addr buffer1,addr buffer <br>
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Dans le cas où l'utilisateur clique sur la colonne 'de nom de fichier', nous devons forcément comparer les noms des fichiers. Il nous faut d'abord récupérer les noms de fichier et on les compare ensuite avec la fonction 'lstrcmpi'. On peut renvoyé la valeur de retour de lstrcmpi sans aucune modification puisqu'elle emploie aussi la même règle de tri. C'est à dire qu'on aura une valeur négative dans eax si la première chaîne de caractères est moindre (B<A...) que la deuxième.</font></p>
+<p><font face="MS Sans Serif" size="-1"> Une fois que les Items ont été triés, nous avons besoin de remettre à jour les valeurs de lParam de chaques Items pour refléter les nouveaux index en appelant la fonction UpdatelParam.</font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  invoke UpdatelParam <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov SizeSortOrder,1 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Cette fonction énumère simplement tout les Items du listview control et met à jour les valeurs dans lParam avec les nouveaux index. On doit absolument faire ça sinon le tri suivant ne marchera pas comme attendu, parce qu'on suppose que la valeur dans lParam est l'index de l'item.</font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;.elseif [edi].code==NM_DBLCLK 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke ShowCurrentFocus <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand l'utilisateur double clique sur l'item, on souhaite que son nom s'affiche dans une boîte de message. On doit donc vérifier si le code dans <font color="#CCFFCC"><b>NMHDR</b></font> est <font color="#CCFFCC"><b>NM_DBLCLK</b></font>. Si c'est ça, on peut continuer pour récupérer son nom et le montrer dans la MessageBox.</font></p>
+<p><font face="Fixedsys">ShowCurrentFocus proc <br>
+  &nbsp;&nbsp; LOCAL lvi:LV_ITEM <br>
+  &nbsp;&nbsp; LOCAL buffer[256]:BYTE <br>
+  <br>
+  &nbsp;&nbsp; invoke SendMessage,hList,LVM_GETNEXTITEM,-1, LVNI_FOCUSED</font></p>
+<p><font face="MS Sans Serif" size="-1">Comment savons-nous quel item vient d'être double cliqué ? Et bien, lorsque un item est cliqué ou double cliqué, son état est remis à &quot;jour&quot;. Même si beaucoup d'Items sont (hilited) sélectionnés avec un encadré pointillé, uniquement un d'entre eux a le centre (est réellement sélectionné). Notre travail, c'est de retrouver l'item qui a le centre. Nous faisons ça en envoyant le message <font color="#CCFFCC"><b>LVM_GETNEXTITEM</b></font> à notre listview control, en spécifiant l'état désiré dans lParam. -1 dans wParam signifie qu'on recherche tous les Items. L'index de l'item est renvoyé dans eax.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp; mov lvi.iItem,eax <br>
+  &nbsp;&nbsp; mov lvi.iSubItem,0 <br>
+  &nbsp;&nbsp; mov lvi.imask,LVIF_TEXT <br>
+  &nbsp;&nbsp; lea eax,buffer <br>
+  &nbsp;&nbsp; mov lvi.pszText,eax <br>
+  &nbsp;&nbsp;&nbsp;mov lvi.cchTextMax,256 <br>
+  &nbsp;&nbsp; invoke SendMessage,hList,LVM_GETITEM,0,addr lvi </font></p>
+<p><font face="MS Sans Serif" size="-1">On continue alors pour récupérer son titre (son nom) en envoyant le message <font color="#CCFFCC"><b>LVM_GETITEM</b></font> au listview control.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp; invoke MessageBox,0, addr buffer,addr AppName,MB_OK 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Finalement, nous affichons le nom du fichier dans une MessageBox.</font></p>
+<p><font face="MS Sans Serif" size="-1">Si vous souhaitez savoir comment utiliser des icônes dans votre listview control, vous pouvez lire ça dans mon tutorial sur le treeview (Tutorial 19). Les étapes sont à peu près les mêmes.</font></p>
+<hr>
+<p align="center"><font face="MS Sans Serif" size="-1"><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</b></font></p>
+<p>&nbsp;</p>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 7: Mouse Input</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 7: Les entrées Souris</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous allons voir comment recevoir et répondre aux entrées souris dans notre procédure de fenêtre. Le programme d'exemple contrôlera les cliques gauche de la souris et affichera un texte sur le secteur client aux coordonnées même de la souris.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez le fichier en example <a href="files/tut07.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Comme pour les entrées clavier, Windows détecte les activités de la souris dépendantes de chaque fenêtre. Ici notre activité portera uniquement sur le clique gauche et sur le mouvement du curseur de la souris dans la fenêtre. À la différence des entrées clavier qui sont adressés uniquement à la fenêtre qui est activée, les messages de la souris sont envoyés à n'importe quelle fenêtre (active ou non) du moment que la souris soit placée dessus. En plus, il existe aussi des 'messages souris' adressés au secteur non-client. Mais la plupart du temps, nous pouvons les ignorer sans s'en soucier. On peut se concentrer pleinement sur les messages touchant au secteur client.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Il y a deux messages pour chaque bouton de la souris : WM_LBUTTONDOWN, WM_RBUTTONDOWN et WM_LBUTTONUP, WM_RBUTTONUP. Pour une souris avec trois boutons, il y a aussi WM_MBUTTONDOWN et WM_MBUTTONUP. Pour le déplacement du curseur de souris sur le secteur  client, Windows envoie le message WM_MOUSEMOVE à la fenêtre qui se trouve sous le curseur.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">Une fenêtre peut recevoir des messages de double-clic, WM_LBUTTONDBCLK ou WM_RBUTTONDBCLK, 
+</font><b><i><font color="#999900">si et seulement si</font></i></b><font color="#CCCCCC"> sa classe de fenêtre obtient le drapeau (flag) de style CS_DBLCLKS, sinon la fenêtre ne recevra seulement qu'une série de messages disant que les boutons de souris on étés pressés (Button Up, Button Down).</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Pour tous ces messages, la valeur de lParam contient (sera) la position de la souris. On travaille en 32 Bit donc sur des doubles mots. Le mot de poids faible sera la coordonnée X et le mot de poids fort sera la coordonnée Y à partir du coin supérieur gauche du secteur client de la fenêtre. WParam indique l'état des boutons de la souris, et des touches Shift et Ctrl.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Example:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option casemap:none</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\gdi32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\gdi32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName db "SimpleWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName db "Our First Window",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MouseClick db 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ; 0=pas encore de click</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hitpoint POINT &lt;></font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetModuleHandle, NULL</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetCommandLine<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;mov CommandLine,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hdc:HDC</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL ps:PAINTSTRUCT</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_LBUTTONDOWN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0FFFFh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.x,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr eax,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.y,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov MouseClick,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke InvalidateRect,hWnd,NULL,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_PAINT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke BeginPaint,hWnd, ADDR ps</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hdc,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.IF MouseClick</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrlen,ADDR AppName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TextOut,hdc,hitpoint.x,hitpoint.y,ADDR AppName,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EndPaint,hWnd, ADDR ps</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end start</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Analyse:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_LBUTTONDOWN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0FFFFh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.x,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr eax,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.y,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov MouseClick,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke InvalidateRect,hWnd,NULL,TRUE</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La procédure de fenêtre attend qu'on clique sur le bouton gauche de la souris. Quand il reçoit WM_LBUTTONDOWN, lParam prend la valeur de la coordonnée du curseur de la souris dans le secteur client. Il sauvegarde la coordonnée dans une variable de type POINT qui est défini comme ceci:</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>POINT
+STRUCT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+x&nbsp;&nbsp; dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+y&nbsp;&nbsp; dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>POINT
+ENDS</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>et le 'flag' qui contrôle l'état de MouseClick, est mis à TRUE (VRAI), signifiant ainsi qu'il y a au moins le bouton gauche de la souris qu'on peut cliquer sur le secteur client.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0FFFFh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.x,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Puisque la coordonnée X est le mot de poids faible du double mot lParam et que les 2 membres qui forment la structure du POINT sont d'une taille de 32 bits, nous devons mettre la partie haute de 'eax' à 0 avant le stockage de celle-ci.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr eax,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hitpoint.y,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Puisque la coordonnée Y est le mot de poids fort du double mot lParam, nous devons mettre la partie basse de 'eax' à 0 avant le stockage de celle-ci. Nous pouvons faire ça en déplaçant 16bits de eax vers la droit.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après le stockage de la position de la souris, nous mettons le flag contrôlant l'état de MouseClick à TRUE (VRAI) pour que le code de la section WM_PAINT sache qu'il y a au moins un clique effectué sur le secteur client. Donc il peut dessiner la chaîne de caractère à la position de la souris. Ensuite nous appelons la fonction InvalidateRect pour forcer la fenêtre à repeindre la totalité de son secteur client.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.IF MouseClick</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrlen,ADDR AppName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TextOut,hdc,hitpoint.x,hitpoint.y,ADDR AppName,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le code de la section WM_PAINT (celui qui sert à repeindre le secteur client de votre fenêtre) doit vérifier si MouseClick est vrai, dès que la fenêtre a été créée. Au tout début il a reçu un message WM_PAINT, pour lequel il n'y avait aucun clique de souris, ainsi il ne doit pas dessiner la chaîne de caractère dans le secteur client. Nous initialisons donc MouseClick à FALSE (FAUX), mais changeons sa valeur à TRUE (VRAI) uniquement quand advient un réel clique de souris.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Si au moins un clique de souris arrive, il dessine la chaîne de caractère sur le secteur client à la position de la souris. Notez qu'il appelle 'lstrlen' pour obtenir la longueur de la chaîne à afficher et renvoie la longueur comme dernier paramètre de la fonction TextOut.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

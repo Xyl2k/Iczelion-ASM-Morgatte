@@ -1,0 +1,251 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 5: More about Text</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 5: Encore plus<BR>A propos des Textes</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Allons plus loin avec les attributs de texte, c'est-à-dire. La fonte (Fonte = Assortissement complet de caractères de même type)et la couleur.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez le fichier en exemple <a href="files/tut05.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le système de couleur de Windows est basé sur le système RGB, R=red, G=Green, B=Blue. Si vous souhaitez définir une couleur dans Windows, vous devez exprimer votre couleur recherchée en combinant ces trois couleurs principales. Chaque plage de couleur (R,G, ou B) a une gamme de 0 à 255 (valeur exprimée en octet). Par exemple, si vous voulez la couleur rouge pur, vous devez employer 255,0,0. Ou si vous voulez la couleur blanc pur, vous devez employer 255,255,255. Vous verrez en expérimentant, qu'obtenir la couleur dont vous avez besoin est très difficile avec ce système puisque vous devez avoir un bon 'felling' pour mélanger les couleurs correspondantes.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Pour la couleur du texte et du fond, vous employez SetTextColor et SetBkColor, tous deux exigent l'handle du contexte de dispositif et une valeur RGB sur 32 bits. La structure de la valeur 32 bits RGB est définie ainsi :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>RGB_value
+struct</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+unused&nbsp;&nbsp; db 0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+blue&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; db ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+green&nbsp;&nbsp;&nbsp;&nbsp; db ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+red&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; db ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>RGB_value
+ends</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Notez que le premier octet n'est pas utilisé et doit être à zéro. L'ordre des trois octets restant est inversé, il s'agit du Bleu, vert, rouge (et non pas RGB). Cependant, nous n'emploierons pas cette structure puisque elle est encombrante à initialiser et à employer. Nous créerons une macro à la place. La macro recevra trois paramètres : les valeurs rouges, vertes et bleues. Ceci produira la valeur RGB désirée, et le stockera sur 32 bits dans eax. La macro est la suivante :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>RGB
+macro red,green,blue</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp; ah,blue</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+shl&nbsp;&nbsp;&nbsp;&nbsp; eax,8</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp; ah,green</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp; al,red</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>endm</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez mettre cette macro dans le fichier INCLUDE pour une utilisation future.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez "créer" une fonte en appelant CreateFont ou CreateFontIndirect. La différence entre ces deux fonctions est que CreateFontIndirect reçoit seulement un paramètre : 'un indicateur logique sur la structure de la fonte', à savoir : LOGFONT. CreateFontIndirect est le plus flexible de deux en particulier si vos programmes ont besoin de changer fréquemment de fontes. Cependant, dans notre exemple, nous "créerons" seulement une fonte pour la démonstration, nous échapperons donc à CreateFont. Après l'appel à CreateFont, il renverra l'handle à une fonte que vous devez choisir dans le contexte de dispositif. Après cela, chaque texte affiché par la fonction API (Paint) emploiera la fonte que nous avons choisie dans le contexte de dispositif.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Contenu:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option casemap:none</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\gdi32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\gdi32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>RGB macro red,green,blue</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ah,blue</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shl eax,8</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ah,green</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov al,red</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>endm</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName db "SimpleWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName db "Our First Window",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>TestString db "Win32 assembly is great and easy!",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FontName db "script",0</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetModuleHandle, NULL</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetCommandLine<br>&nbsp;&nbsp;&nbsp;&nbsp;mov CommandLine,eax</font></font></font></b><br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL hdc:HDC</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL ps:PAINTSTRUCT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;LOCAL hfont:HFONT</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.IF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.ELSEIF uMsg==WM_PAINT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke BeginPaint,hWnd, ADDR ps</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp;&nbsp; hdc,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ADDR FontName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke SelectObject, hdc, eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mov&nbsp;&nbsp;&nbsp; hfont,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RGB&nbsp;&nbsp;&nbsp; 200,200,50</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke SetTextColor,hdc,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RGB&nbsp;&nbsp;&nbsp; 0,0,255</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke SetBkColor,hdc,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke TextOut,hdc,0,0,ADDR TestString,SIZEOF TestString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke SelectObject,hdc, hfont</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke EndPaint,hWnd, ADDR ps</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end start</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Analyse:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateFont,24,16,0,0,400,0,0,0,OEM_CHARSET,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DEFAULT_QUALITY,DEFAULT_PITCH or FF_SCRIPT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR FontName</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CreateFont crée une fonte logique(mélangée RGB) qui est la couleur la plus proche des paramètres sélectionnés et des données de fonte disponibles. Cette fonction a plus de paramètres qu'aucune autre fonction de Windows. Il renvoie l'handle de la fonte logique qui doit être utilisé par la fonction SelectObject. Nous allons examiner ces paramètres en détail.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CreateFont proto nHeight:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nWidth:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nEscapement:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nOrientation:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nWeight:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cItalic:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cUnderline:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cStrikeOut:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cCharSet:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cOutputPrecision:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cClipPrecision:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cQuality:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cPitchAndFamily:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lpFacename:DWORD</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>nHeight</b>&nbsp;&nbsp;est la hauteur désirée des caractères. On prend 0 par défaut pour utiliser la taille moyenne.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>nWidth</b>&nbsp;&nbsp;est la largeur désirée des caractères. Normalement cette valeur doit être 0,ce qui permet à Windows de faire correspondre la largeur à la hauteur. Cependant, dans notre exemple, la largeur par défaut fait que les caractères sembles difficile à lire, donc on emploiera la largeur 16 à la place de cela.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>nEscapement&nbsp;</b>&nbsp;
+Sert à spécifier l'inclinaison des caractères qui suivent cette instruction. On compte en dixième de degré. Normalement, cette valeur est à 0. On la met à 900 pour avoir tous les caractères va vers le haut, à 1800 pour écrire vers l'arrière, ou 2700 pour écrire chaque caractère du haut vers le bas.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>nOrientation</b>&nbsp;&nbsp;
+Indique de combien doivent être tournés les caractères (en dixième de degré).  900 pour avoir tous les caractères couchés tournés vers le haut, 1800 pour le contraire, etc.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>nWeight&nbsp;</b>&nbsp;
+Donne l'épaisseur de chaque caractère. Windows définit les tailles suivantes :</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_DONTCARE&nbsp;&nbsp;&nbsp;&nbsp;equ 0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_THIN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 100</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_EXTRALIGHT&nbsp;equ 200</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_ULTRALIGHT&nbsp;equ 200</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_LIGHT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 300</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_NORMAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 400</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_REGULAR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 400</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_MEDIUM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 500</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_SEMIBOLD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 600</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_DEMIBOLD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 600</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_BOLD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 700</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_EXTRABOLD&nbsp;&nbsp;equ 800</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_ULTRABOLD&nbsp;&nbsp;equ 800</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_HEAVY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 900</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FW_BLACK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;equ 900</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cItalic</b>&nbsp;&nbsp;0 pour normal, une autre valeur pour caractères italiques.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cUnderline</b>&nbsp;&nbsp;0 pour normal, une autre valeur pour les caractères soulignés.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cStrikeOut</b>&nbsp;&nbsp;0 pour normal, une autre valeur pour des caractères (barrés) avec une ligne par le centre.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cCharSet</b>&nbsp;C'est le jeu de caractères de la fonte (ex : ARIAL). Ce doit normalement être OEM_CHARSET, ce qui permet à Windows de choisir la fonte.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cOutputPrecision</b>&nbsp;Indique à quel point la fonte choisie doit être proche des caractéristiques que nous voulons. Doit normalement on prend OUT_DEFAULT_PRECIS par défaut.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cClipPrecision&nbsp;</b>Indique la précision de la coupure. La coupure c'est ce qui définit les bords de la zone d'écriture. Le texte sera coupé en arrivant près des bords et cette zone de coupure peut être plus ou moins étendue dans l'intérieur du secteur client.  Vous pouvez utiliser la valeur CLIP_DEFAULT_PRECIS qui définit le comportement de coupure par défaut.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cQuality&nbsp;</b>Indique la qualité de production. La qualité de production définit précisément comment le GDI doit essayer de calquer au mieux les attributs de la fonte logique à ceux d'une fonte physique réelle. Il y a trois choix : DEFAULT_QUALITY, PROOF_QUALITY et DRAFT_QUALITY.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>cPitchAndFamily</b>&nbsp;Spécifie la hauteur et la type de fonte. Vous devez combiner ces 2 valeurs avec l'opérateur "or".</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>lpFacename</b>&nbsp;C'est un NULL qui indique la police de caractères de la fonte.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La description  ci-dessus n'est en aucun cas complète. Vous devez attribuer à votre API Win32 les références pour plus de détails.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">&nbsp;</font><font color="#999900">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SelectObject, hdc, eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hfont,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après avoir obtenu l' handle de la fonte logique, nous devons l'employer pour choisir la fonte dans le contexte de dispositif en appelant SelectObject. SelectObject met les nouveaux objets du GDI tels que les stylos, les brosses et les fontes dans le contexte de dispositif pour être employés par des fonctions du GDI. Il renvoie l' handle (de l'objet à replacé) que nous devons sauvegarder pour de futures appels de la fonction SelectObject. Après l'appel SelectObject, n'importe quelle fonction de production de texte emploiera la fonte que nous venons juste de choisir dans le contexte de dispositif.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+RGB&nbsp;&nbsp;&nbsp; 200,200,50</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetTextColor,hdc,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+RGB&nbsp;&nbsp;&nbsp; 0,0,255</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetBkColor,hdc,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Employez la macro RGB pour créer une valeur RGB sur 32 bits pour être employée par SetColorText et SetBkColor.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TextOut,hdc,0,0,ADDR TestString,SIZEOF TestString</font></font></font></b><font face="Arial,Helvetica"><font color="#999900"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Appelez la fonction TextOut pour dessiner le texte sur le secteur client. Le texte sera dans la fonte et la couleur que nous avons spécifié précédemment.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#999900">&nbsp;
+invoke SelectObject,hdc, hfont</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand on as fini de se servir de cette fonte, on doit rétablir l'ancienne fonte dans le contexte de dispositif. Vous devez toujours rétablir l'objet que vous avez remplacé dans le contexte de dispositif.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

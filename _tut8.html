@@ -1,0 +1,486 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 8: Menu</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 8: Le Menu</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans ce tutorial, nous allons apprendre comment incorporer un menu à notre fenêtre.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez l'<a href="files/tut08-1.zip">example 1</a> et l'<a href="files/tut08-2.zip">example2.</a></font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Theorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le menu est un des composants le plus important d'une votre fenêtre. Le menu présente la liste des services qu'un programme peut offrir à l'utilisateur. L'utilisateur ne doit pas lire le manuel inclus avec le programme pour être capable de l'employer, il lui suffit de lire attentivement le menu pour obtenir une vue d'ensemble de la capacité d'un programme particulier et commencer à jouer avec lui immédiatement. Puisque un menu est un outil pour que l'utilisateur puisse rapidement se diriger, vous devez suivre la norme. Succinctement, les deux premiers articles du menu doivent être : le fichier et d'Edition et le fichier d'Aide. Vous pouvez insérer vos propres articles de menu entre celui d'Edition et celui de l'Aide. Si un article du menu invoque une boîte de dialogue, vous devez ajouter un ellipsis (...) à la chaîne de caractère  du menu.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le menu est une sorte de ressource. Il y a plusieurs sortes de ressources tels que la boîte de dialogue, les tableaux de caractères, l'icône, bitmap, le menu etc. Les ressources sont décrites dans un fichier séparé, appelé fichier de ressources et qui normalement a l'extension .rc. Vous combinez alors les ressources avec le code source pendant l'étape de liaison. Le produit final est un fichier exécutable qui contient, à la fois les instructions et les ressources.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez écrire des scénarios de ressources en employant n'importe quel éditeur de texte. Ces fichiers ressources sont composés des expressions qui décrivent les convenances ainsi que d'autres attributs des ressources employées dans un programme particulier. Bien que vous puissiez écrire des scénarios de ressource avec un éditeur de texte, c'est plutôt encombrant. Une meilleure alternative est d'employer un éditeur de ressources qui vous laisse concevoir visuellement des ressources avec un bien meilleurs confort. Les éditeurs de ressources sont habituellement inclus dans le pack avec le compilateur comme C Visuel +, Borland C +, etc.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous pouvons décrire une ressource de menu comme ceci :</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<ul><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MyMenu&nbsp;
+MENU</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>{</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;
+[Ici, la liste du menu]</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>}</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">Les programmeurs sous C peuvent se rendre compte que c'est semblable à la déclaration de la structure </font><b><font color="#999900">MyMenu</font></b><font color="#CCCCCC">
+d'un nom de menu suivi par le mot clef <b>MENU</b> et le menu est inscrit entre parenthèses[]. Alternativement, vous pouvez employer 'BEGIN' et 'END' au lieu des parenthèses si vous préférez. Cette syntaxe est plus acceptable pour les programmeurs en Pascal.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La liste du menu peut être soit <b>MENUITEM</b> soit la déclaration <b>POPUP</b>.<BR>La déclaration </font></font></font>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>MENUITEM </b>définit une barre(bar) de menu qui n'invoque pas de menu popup lorsqu'il est choisi. La syntaxe est la suivante :</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MENUITEM
+"&amp;text", ID [,options]</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Il commence par le mot-clé MENUITEM suivi du texte que vous voulez employer en tant que chaîne de caractères pour la barre de menu. Notez l'esperluète. Il sert à souligner le caractère qui le suit. Après la chaîne de caractère formant le texte on trouve le n°ID de l'article du menu. L'ID est le numéro qui sera employé pour identifier l'article du menu dans le message envoyé à la procédure de fenêtre lorsqu'on le sélectionne. Chaque n°ID du menu doit être unique vis à vis des autres.</font></font></font>
+<br>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>'Options' justement en option.  
+Les options disponibles sont les suivantes :</font></font></font> 
+<dl> 
+  <ul>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>GRAYED</b>&nbsp; 
+      L'article du menu est inactif et il ne produit pas de message WM_COMMAND. Le texte est grisé (grayed).</font></font></font></li>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>INACTIVE</b> L'article du menu est inactif et il ne produit pas de message WM_COMMAND. Le texte est quand même affiché normalement.</font></font></font></li>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>MENUBREAK</b> Cet article et les articles suivants apparaissent sur une nouvelle ligne du menu.</font></font></font></li>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>HELP</b> Cet article et les articles suivants sont alignés à droite.</font></font></font></li>
+  </ul>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez employer une de ces options ou bien les combiner entre elles avec l'opérateur "or". Prenez garde à ce que <b>INACTIVE</b> et <b>GRAYED</b> ne soient pas utilisés ensembles.</FONT></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La syntaxe de la déclaration </FONT></FONT></FONT>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>POPUP </b>est la suivante : </font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <dl><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>POPUP 
+    "&amp;text" [,options]</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>{</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp; 
+    [menu list]</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>}</font></font></font></b></dl>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La déclaration POPUP définit une barre de menu qui, quand elle est choisi, abaisse une liste d'articles de menu dans une petite fenêtre POPUP. La liste du menu peut être un <B>MENUTIEM</B> ou la déclaration <B>POPUP</B>. Il y a une sorte de déclaration spéciale qui est <B>MENUITEM</B>, <B>MENUITEM</B> est le SÉPARATEUR, qui dessinera une ligne horizontale à l'intérieur de la fenêtre POPUP. </font></font></font> 
+  <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>L'étape suivante après que vous en ayez finis avec le scénario de ressources est que votre programme doit faire référence à votre menu.</font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez faire ceci à deux endroits différents dans votre programme.</font></font></font> 
+  <ul>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans le membre lpszMenuName de la structure de WNDCLASSEX. Déclarez, que vous avez un menu nommé "FirstMenu", vous pouvez assigné le menu à votre fenêtre comme cela :</font></font></font></li>
+    <ul>
+      <ul>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.DATA</font></font></font></b> 
+        <ul>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName&nbsp; 
+          db "FirstMenu",0</font></font></font></b> 
+        </ul>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        <br>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        <br>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.CODE</font></font></font></b> 
+        <ul>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+          <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>mov&nbsp;&nbsp; 
+          wc.lpszMenuName, OFFSET MenuName</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        </ul>
+      </ul>
+    </ul>
+    <li> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ou bien dans les paramètres de CreateWindowEx au niveau de l' handle du menu (Hmenu)  comme cela :</font></font></font></li>
+    <ul>
+      <ul>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.DATA</font></font></font></b> 
+        <ul>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName db "FirstMenu",0</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hMenu HMENU ?</font></font></font></b> 
+        </ul>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        <br>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        <br>
+        <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.CODE</font></font></font></b> 
+        <ul>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+          <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>invoke 
+          LoadMenu, hInst, OFFSET MenuName</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>mov&nbsp;&nbsp; 
+          hMenu, eax</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>invoke 
+          CreateWindowEx,NULL,OFFSET ClsName,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          OFFSET Caption, WS_OVERLAPPEDWINDOW,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          CW_USEDEFAULT,CW_USEDEFAULT,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          CW_USEDEFAULT,CW_USEDEFAULT,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          NULL,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          hMenu,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          hInst,\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+          NULL\</font></font></font></b> <br>
+          <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>...........................</font></font></font></b> 
+        </ul>
+      </ul>
+    </ul>
+  </ul>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Donc vous pouvez vous demander, quelle est la différence entre ces deux méthodes ?</font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand vous faites référence au menu dans la structure de WNDCLASSEX, le menu devient le menu "par défaut" pour la classe de fenêtre. Chaque fenêtre de cette classe aura le même menu.</font></font></font> 
+  <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Si vous souhaitez que chaque fenêtre ait la même classe mais qu'elles aient des menus différents, vous devez choisir la deuxième forme. Dans ce cas, n'importe quelle fenêtre dont on passe l'handle de son menu à la fonction CreateWindowEx aura un menu qui "ne tient pas compte" du menu par défaut, défini dans la structure WNDCLASSEX.</font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ensuite nous devons examiner comment un menu fait pour indiquer à la procédure de fenêtre quand l'utilisateur choisit un des article du menu.</font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand l'utilisateur choisit un article du menu, la procédure de fenêtre reçoit le message WM_COMMAND. Le mot de poids faible de wParam contient le n°ID de l'article choisi dans le menu. (Le mot de poids faible de wParam = si c'est du contenu de eax (qui est sur 32Bit) dont on parle alors on parle plus précisément  ici des 16 dernier bits de eax).</font></font></font> 
+  <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Maintenant nous avons les informations suffisantes pour créer et employer un menu. On va le faire.</font></font></font> 
+  <h3> <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Example:</font></font></font></h3>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le premier exemple montre comment créer et employer un menu en spécifiant le nom de menu dans la classe de fenêtre.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model 
+    flat,stdcall</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option 
+    casemap:none</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain 
+    proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include 
+    \masm32\include\windows.inc</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include 
+    \masm32\include\user32.inc</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include 
+    \masm32\include\kernel32.inc</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib 
+    \masm32\lib\user32.lib</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib 
+    \masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName 
+    db "SimpleWinClass",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName&nbsp; 
+    db "Our First Window",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">MenuName 
+    db "FirstMenu",0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#999900"> 
+    ; Le nom de notre menu dans le fichier de ressources.</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Test_string 
+    db "You selected Test menu item",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Hello_string 
+    db "Hello, my friend",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Goodbye_string 
+    db "See you again, bye",0</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance 
+    HINSTANCE ?</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine 
+    LPSTR ?</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.const</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_TEST 
+    equ 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ; (Menu IDs) ou: Les n°Identification des éléments constituants le Menu </font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_HELLO 
+    equ 2</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_GOODBYE 
+    equ 3</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT 
+    equ 4</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke GetModuleHandle, NULL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke GetCommandLine<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;mov CommandLine,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain 
+    proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    LOCAL wc:WNDCLASSEX</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    LOCAL msg:MSG</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    LOCAL hwnd:HWND</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    push&nbsp; hInst</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    pop&nbsp;&nbsp; wc.hInstance</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font size=-1><font color="#CCCCCC">&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font><font color="#999900">&nbsp;&nbsp; 
+    ; Place le nom de notre menu ici</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke RegisterClassEx, addr wc</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    hInst,NULL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp; hwnd,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    invoke UpdateWindow, hwnd</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .WHILE TRUE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .BREAK .IF (!eax)</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke DispatchMessage, ADDR msg</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .ENDW</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    ret</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain 
+    endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc 
+    proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .IF uMsg==WM_DESTROY</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke PostQuitMessage,NULL</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .ELSEIF uMsg==WM_COMMAND</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    mov eax,wParam</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .IF ax==IDM_TEST</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox,NULL,ADDR Test_string,OFFSET AppName,MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSEIF ax==IDM_HELLO</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox, NULL,ADDR Hello_string, OFFSET AppName,MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSEIF ax==IDM_GOODBYE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox,NULL,ADDR Goodbye_string, OFFSET AppName, MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke DestroyWindow,hWnd</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ENDIF</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .ELSE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ret</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .ENDIF</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    ret</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc 
+    endp</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end start</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>**************************************************************************************************************************</font></font></font></b> 
+    <center>
+      <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Menu.rc</font></font></font></b> 
+    </center>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>**************************************************************************************************************************</font></font></font></b><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_TEST 1</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_HELLO 2</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_GOODBYE 3</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_EXIT 4</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FirstMenu 
+    MENU</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>{</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;POPUP 
+    "&amp;PopUp"</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    {</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "&amp;Say Hello",IDM_HELLO</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "Say &amp;GoodBye", IDM_GOODBYE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM SEPARATOR</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "E&amp;xit",IDM_EXIT</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    }</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;MENUITEM 
+    "&amp;Test", IDM_TEST</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>}</font></font></font></b> 
+    <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <h3><BR><BR><BR><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Analyse:</font></font></font></h3>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>On va analyser le fichier de ressources d'abord.</font></font></font> <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <dl><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_TEST 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    /* cette ligne revient au même que : IDM_TEST equ 1*/</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_HELLO 2</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_GOODBYE 3</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>#define 
+    IDM_EXIT 4</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>&nbsp;</dl>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Les susdites lignes définissent les n°ID des éléments constituants le menu. Vous pouvez assigner n'importe quelle valeur à l'ID tant que cette valeur est unique dans le menu.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FirstMenu 
+    MENU</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Déclarez votre menu avec le mot clef 'MENU'</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;POPUP 
+    "&amp;PopUp"</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    {</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "&amp;Say Hello",IDM_HELLO</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "Say &amp;GoodBye", IDM_GOODBYE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM SEPARATOR</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    MENUITEM "E&amp;xit",IDM_EXIT</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    }</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Définit un menu popup avec quatre articles de menu, le troisième est un séparateur de menu.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;MENUITEM 
+    "&amp;Test", IDM_TEST</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Définit une barre de menu dans le menu principal.</font></font></font> <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ensuite nous examinons la source du code.</font></font></font> <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <dl><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName 
+    db "FirstMenu",0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ; C'est le nom de notre menu dans le fichier de ressources.</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Test_string 
+    db "You selected Test menu item",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Hello_string 
+    db "Hello, my friend",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Goodbye_string 
+    db "See you again, bye",0</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>&nbsp;</dl>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName est le nom du menu dans le fichier de ressources. Remarquez que vous pouvez définir plus qu'un menu dans le fichier de ressource. Donc vous devez spécifier quel menu vous voulez employer. Ces trois lignes définissent les chaînes de caractères à afficher dans les boîtes de message (Message Box) qui sont invoquées plus loin quand l'article approprié du menu est choisi par l'utilisateur.</font></font></font> 
+  <br>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <dl><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_TEST 
+    equ 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ; (Menu IDs) Les n° d'identités des éléments constituants le Menu.</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_HELLO 
+    equ 2</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_GOODBYE 
+    equ 3</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT 
+    equ 4</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>&nbsp;</dl>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Définit les 'menu IDs' pour pouvoir les utiliser dans la procédure de fenêtre. Ces valeurs DOIVENT ÊTRE identiques à celles définies dans le fichier de ressources.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+    .ELSEIF uMsg==WM_COMMAND</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    mov eax,wParam</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .IF ax==IDM_TEST</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox,NULL,ADDR Test_string,OFFSET AppName,MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSEIF ax==IDM_HELLO</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox, NULL,ADDR Hello_string, OFFSET AppName,MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSEIF ax==IDM_GOODBYE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke MessageBox,NULL,ADDR Goodbye_string, OFFSET AppName, MB_OK</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ELSE</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke DestroyWindow,hWnd</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    .ENDIF</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans la procédure de fenêtre, nous traitons des messages WM_COMMAND. Quand l'utilisateur choisit un article du menu, le menu ID de cet article est envoyé à la procédure de fenêtre dans le mot de poids faible de wParam grâce au message WM_COMMAND. Ainsi quand nous stockons la valeur de wParam dans eax, on compare sa valeur avec  eax au niveau des 'menu IDs' que nous avons définis précédemment et le programme agit en conséquence. Dans les trois premiers cas, quand l'utilisateur sélectionne les articles Test, Say Hello, and Say GoodBye du menu, uniquement une seule chaîne de caractères s'affiche dans une boîte de message.</font></font></font> <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Si l'utilisateur choisit l'article 'Exit' dans le menu, nous appelons DestroyWindow avec l'handle de notre fenêtre comme paramètre pour qu'il puisse fermer notre fenêtre.</font></font></font> <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Comme vous pouvez le voir, spécifier le nom du menu dans une classe de fenêtre est très facile. Cependant vous pouvez aussi employer une méthode supplémentaire pour charger un menu dans votre fenêtre. Je ne vous montrerai pas le code source entier ici. Le fichier de ressources est le même pour les deux méthodes. Il y a seulement quelques changements mineurs du fichier source que je vais vous montrer ci-dessous.</font></font></font> <br>
+    <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp; 
+  <dl><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance 
+    HINSTANCE ?</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine 
+    LPSTR ?</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hMenu 
+    HMENU ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    ; handle of our menu</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></b>&nbsp;</dl>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Définit une variable de type HMENU pour stocker notre menu handle.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;<b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    invoke LoadMenu, hInst, OFFSET MenuName</b></font></font></font> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    mov&nbsp;&nbsp;&nbsp; hMenu,eax</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b> <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,hMenu,\</font></font></font></b> 
+    <br>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    hInst,NULL</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+  <p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Avant l'appel CreateWindowEx, nous appelons LoadMenu avec l'Instance Handle et un pointeur sur le nom de notre menu. LoadMenu renvoie l'handle de notre menu dans le fichier de ressources que nous passons à CreateWindowEx.</font></font></font> <br>
+  <hr WIDTH="100%">
+  <center>
+    <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's 
+    Win32 Assembly HomePage</a>]</font></font></font></b> 
+  </center>
+  <font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font></dl>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

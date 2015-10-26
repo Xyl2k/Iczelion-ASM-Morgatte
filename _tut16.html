@@ -1,0 +1,357 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 16: Event Object</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFFCC">Tutorial 16: Event Object</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Nous allons apprendre ce qu'est un event object et comment l'employer dans un programme multi-liens.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1><font color="#FFFFFF">Downloadez l'exemple </font><font color="#000000"><a href="files/tut16.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Dans le Tutorial précédent, on a vu comment les liens communiquent avec un message de fenêtre sur mesure (custum). J'ai omis deux autres méthodes : les variables globales et les 'events objets'. On va utiliser les deux dans ce Tutorial.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Un 'event objet', c'est comme un commutateur : il a seulement deux états possibles: on/off. Quand un 'event objet' est allumé, il est dans l'état "signalé" (c'est à dire qu'on l'utilise). Quand il est éteint, il est dans l'état "nonsignalé"(on ne l'utilise pas, on n'y fait référence nulle part). On créer un 'event objet' et on écrit un petit bout de code au niveau des liens appropriés pour observer l'état de l' 'event objet'. Si l' 'event objet' est dans l'état nonsignalé, les liens qui se servent des 'event objet' sont inactifs. C'est bien pratique car lorsque les liens sont en état d'attente, ils consomment peu de temps CPU.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous créez 'event object' en appelant la fonction CreateEvent qui a la syntaxe suivante :</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>CreateEvent
+proto lpEventAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+bManualReset:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+bInitialState:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpName:DWORD</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpEventAttribute</font></b><font color="#FFFFFF">-->
+Si vous donnez la valeur NULL, l' 'event object' est créé d'une façon par défaut.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">bManualReset</font></b><font color="#FFFFFF">-->
+Si vous souhaitez que Windows désactive automatiquement l'event object (off) après l'appel WaitForSingleObject, vous devez taper 'FALSE' pour ce paramètre. Sinon vous devez le désactiver manuellement avec l'appel ResetEvent.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">bInitialState</font></b><font color="#FFFFFF">-->
+Au moment où il est créé, si vous souhaitez que l'event object soit dans l'état signalé, mettez TRUE pour ce paramètre, sinon l' event object sera créé avec l'état nonsignalé.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">lpName</font></b><font color="#000000">
+</font><font color="#FFFFFF">--> C'est le pointer qui repère une chaîne de caractère (ASCIIZ=du texte), laquelle est le nom de l'event object. Ce nom sera employé quand vous voudrez appeler OpenEvent.(pointe sur le nom de l'Event Object)</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Si l'appel s'est déroulé avec succès, il renvoie l'handle de l' event object qui vient d'être créé, autrement il renvoie le NULL.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez modifier l'état de l'event object avec deux des appels API : SetEvent et ResetEvent. La fonction SetEvent met l'event object à l'état signalé. ResetEvent fait le contraire.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Après que l'event object soit créé, il vous faut insérez l'appel 'WaitForSingleObject' dans le lien qui dépend de l'état de l'event object. WaitForSingleObject a la syntaxe suivante :</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>WaitForSingleObject
+proto hObject:DWORD, dwTimeout:DWORD</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">hObject</font></b><font color="#FFFFFF">
+--> L'handle d'un des l'objets de synchronisation. L' event object est un type d'objet de synchronisation.</font></font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#009900">dwTimeout
+</font></b><font color="#FFFFFF">--> C'est à vous de fixer (en millisecondes) le temps maximal que cette fonction peut mettre pour que l'objet passe à  l'état signalé. Si le temps indiqué est passé et que l'event object est toujours à l'état nonsignalé, alors WaitForSingleObject rend la main à l'interlocuteur. Si vous voulez attendre indéfiniment, vous devez mettre la valeur 'INFINITE' pour ce paramètre.(c'est aussi -1 en décimal ou FFFFFFFF en hexadécimal).</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Exemple:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>L'exemple ci-dessous montre une fenêtre attendant que l'utilisateur choisisse une commande du menu. Si l'utilisateur choisit ''run thread'' (lien en route), le lien commence le calcul sauvage (un calcul immense qui occupe le système). Quand il est fini, une boîte de message apparaît, informant l'utilisateur que le travail est terminé. Mais pendant que le lien était en action, l'utilisateur pouvait toujours cliquer sur "stop thread" pour arrêter ce lien.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>option
+casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WinMain
+proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>include
+\masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>include
+\masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>include
+\masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>IDM_START_THREAD
+equ 1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>IDM_STOP_THREAD
+equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>IDM_EXIT
+equ 3</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WM_FINISH
+equ WM_USER+100h</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>ClassName
+db "Win32ASMEventClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>AppName&nbsp;
+db "Win32 ASM Event Example",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>MenuName
+db "FirstMenu",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>SuccessString
+db "The calculation is completed!",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>StopString
+db "The thread is stopped",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>EventStop
+BOOL FALSE</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>hInstance
+HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>CommandLine
+LPSTR ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>hwnd
+HANDLE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>hMenu
+HANDLE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>ThreadID
+DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ExitCode
+DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>hEventStart
+HANDLE ?</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetCommandLine</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov CommandLine,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WinMain
+proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR&nbsp; AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,300,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetMenu,hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp; hMenu,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WinMain
+endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WndProc
+proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateEvent,NULL,FALSE,FALSE,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; hEventStart,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,OFFSET ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateThread,NULL,NULL,eax,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ThreadID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_START_THREAD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetEvent,hEventStart</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_START_THREAD,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_STOP_THREAD,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif ax==IDM_STOP_THREAD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; EventStop,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_START_THREAD,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_STOP_THREAD,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_FINISH</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,NULL,ADDR SuccessString,ADDR AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>WndProc
+endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ThreadProc
+PROC USES ecx Param:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke WaitForSingleObject,hEventStart,INFINITE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ecx,600000000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.WHILE ecx!=0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if EventStop!=TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dec&nbsp; ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hwnd,ADDR StopString,ADDR AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; EventStop,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jmp ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostMessage,hwnd,WM_FINISH,NULL,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_START_THREAD,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_STOP_THREAD,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jmp&nbsp;&nbsp; ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FF99"><font size=-1>ThreadProc
+ENDP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF99"><font size=-1>end
+start</font></font></font></b>
+<h3>
+<b><font face="Arial,Helvetica"><font color="#33FF33"><font size=+0>Analyse:</font></font></font></b></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Dans cet exemple, je vous montre une autre technique de lien.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateEvent,NULL,FALSE,FALSE,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; hEventStart,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,OFFSET ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateThread,NULL,NULL,eax,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ADDR ThreadID</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,eax</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez voir que je crée l'event object ainsi que le lien, pendant le traitement du message WM_CREATE. Je crée l'event object à l'état nonsignalé et avec remis automatique. Après que l'event object soit créé, je crée le lien. Cependant le lien ne se met pas immédiatement au travail parce qu'il attend que l'event object soit mis à l'état 'signalé'. Ci-dessous voici comment le mettre à signalé:</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>ThreadProc
+PROC USES ecx Param:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke WaitForSingleObject,hEventStart,INFINITE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ecx,600000000</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>La première ligne de la procédure de lien est l'appel WaitForSingleObject. Ici on attend infiniment que l'event object passe à l'état signalé avant qu'il ne retourne. Ça signifie que même après que le lien soit créé, nous le mettons dans un état d'inactivité.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'utilisateur choisit la commande du menu "run thread", nous mettons l'event object dans l'état signalé, comme indiqué ci-dessous :</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_START_THREAD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetEvent,hEventStart</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>L'appel SetEvent met l'event object à l'état signalé, ce qui fait qu'à son tour l'appel WaitForSingleObject nous dirige vers la procédure du lien et le lien commence à travailler. Quand l'utilisateur choisit la commande "stop thread", nous mettons la valeur de la variable globale "EventStop" à TRUE.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if EventStop==FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dec&nbsp; ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hwnd,ADDR StopString,ADDR AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; EventStop,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jmp ThreadProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ceci stop le lien et saute de nouveau à l'appel WaitForSingleObject. Remarquez que nous n'avons pas besoin de remettre manuellement l'event object dans l'état nonsignalé puisque nous avons mis le paramètre bManualReset à FALSE (dans l'appel de CreateEvent).</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#006600"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

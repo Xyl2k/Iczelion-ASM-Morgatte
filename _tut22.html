@@ -1,0 +1,408 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="lancelot">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 22: SuperClassing</title>
+</head>
+<body STYLE="#text-align:justify;" text="#C0C0C0" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#CC6600">Tutorial 22: Superclassification<BR>(Superclassing)</font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>Dans ce Tutorial, nous allons voir, ce qu'est la superclassification et à quoi ça sert. Vous allez aussi apprendre à munir vos 'Controls' de la fonction de la touche TAB. (vous savez ! en appuyant sur TAB on met en sélection les boutons ou le contrôle d'édition… les uns après les autres) </font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Downloadez l'exemple <a href="files/tut22.zip">ici</a></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#3366FF">Théorie:</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Dans votre carrière de programmeur, vous avez sûrement déjà rencontré une situation où vous avez besoin de plusieurs 'Controls' avec un comportement *peu* différent. Par exemple, vous pouvez avoir besoin de 10 'contrôles d'édition' qui acceptent seulement des nombres. Il y a plusieurs façons de réaliser ceci :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Créez votre propre 'window class' et instance. </font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Créez ce 'contrôle d'édition' et ensuite sous-classez chacun d'entre eux (les prochains).</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Superclassez le contrôle d'édition</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>La première méthode est trop ennuyeuse. On doit réaliser chaque fonctionnalité du contrôle d'édition par nous-même. Il vaut mieux laisser tomber ça. La deuxième méthode est meilleure que la première, mais c'est encore un travail de longue haleine. C'est bon si vous sous-classez uniquement quelques 'controls' mais ce sera un véritable cauchemar si vous sous-classer plus d'une douzaine de 'Controls'. La superclassification est la technique que vous devez employer pour cette occasion.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>La sousclassification est la méthode qu'on doit utiliser pour *prendre le contrôle* d'une classe de fenêtre particulière. Par *la prise de contrôle*, je veux dire que vous pouvez modifier les propriétés de la (Window Class) classe de fenêtre pour la modeler à votre convenance, ainsi on crée une série de 'Controls'.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Les étapes de la superclassification sont décrites ci-dessous :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>call <font color="#FFFF00">GetClassInfoEx</font> sert à obtenir l'information sur la 'Window Class' vous voulez pour la superclasse.
+<font color="#FFFF00">GetClassInfoEx</font> exige que le pointer soit sur la structure WNDCLASSEX laquelle sera remplie de l'information si l'appel est renvoyé avec succès.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Modifiez les membres que vous voulez dans la structure WNDCLASSEX. Cependant, il y a deux membres que vous DEVEZ changer :</font></font></li>
+
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hInstance</font> Vous devez mettre l'instance handle de votre programme dans ce membre.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">lpszClassName</font> Vous devez mettre ici le pointer qui est sur le nouveau 'class name'.</font></font></li>
+
+<br><font face="Arial,Helvetica"><font size=-1>Vous n'avez pas besoin de modifier le membre lpfnWndProc, mais la plupart du temps, vous avez quand même besoin de le faire. Surtout, n'oubliez pas de sauver  le membre lpfnWndProc d'origine si vous souhaitez l'appeler avec <font color="#FFFF00">CallWindowProc</font>. </font></font></ul>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Enregistrez votre structure WNDCLASSEX  modifiée. Vous aurez une nouvelle (Window Class) classe de fenêtre qui aura plusieurs des caractéristiques de la vieille classe de fenêtre.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Créez des fenêtres avec la nouvelle 'class'.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>La superclassification, c'est mieux que la sousclassification si vous souhaitez créer pas mal de 'Controls' ayant les mêmes caractéristiques.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#3366FF"><font size=-1>Exemple:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WM_SUPERCLASS equ WM_USER+5</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WinMain PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>EditWndProc PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>ClassName db "SuperclassWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>AppName&nbsp;&nbsp;&nbsp;
+db "Superclassing Demo",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>EditClass db "EDIT",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>OurClass db "SUPEREDITCLASS",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>Message db "You pressed the Enter key in the text box!",0</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>hInstance dd ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>hwndEdit dd 6 dup(?)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>OldWndProc dd ?</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WinMain
+proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+push hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hbrBackground,COLOR_APPWORKSPACE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE+WS_EX_CONTROLPARENT,ADDR ClassName,ADDR
+AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPED+WS_CAPTION+WS_SYSMENU+WS_MINIMIZEBOX+WS_MAXIMIZEBOX+WS_VISIBLE,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,350,220,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov hwnd,eax</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WinMain endp</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WndProc proc uses ebx edi hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.cbSize,sizeof WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassInfoEx,NULL,addr EditClass,addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push wc.lpfnWndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop OldWndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.lpfnWndProc, OFFSET EditWndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.lpszClassName,OFFSET OurClass</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor ebx,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edi,20</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.while ebx&lt;6</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR OurClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE+WS_BORDER,20,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+edi,300,25,hWnd,ebx,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov dword ptr [hwndEdit+4*ebx],eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add edi,25</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+inc ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>WndProc endp</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>EditWndProc PROC hEdit:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CHAR</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if (al>="0" &amp;&amp; al&lt;="9") || (al>="A" &amp;&amp; al&lt;="F")
+|| (al>="a" &amp;&amp; al&lt;="f") || al==VK_BACK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if al>="a" &amp;&amp; al&lt;="f"</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+sub al,20h</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CallWindowProc,OldWndProc,hEdit,uMsg,eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_KEYDOWN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if al==VK_RETURN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hEdit,addr Message,addr AppName,MB_OK+MB_ICONINFORMATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hEdit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif al==VK_TAB</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetKeyState,VK_SHIFT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+test eax,80000000</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ZERO?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDNEXT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDFIRST</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDPREV</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDLAST</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CallWindowProc,OldWndProc,hEdit,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CallWindowProc,OldWndProc,hEdit,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>EditWndProc
+endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FF6600"><font size=-1>end
+start</font></font></font></b>
+<br>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#3366FF">Analyse:</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Le programme créera une simple fenêtre avec 6 contrôles d'édition "retouchés" dans son secteur client. Les contrôles d'édition accepteront uniquement des chiffres hexdécimaux. En réalité, j'ai modifié l'exemple de 'Sousclassification' pour le transformer en superclassification. Le début du programme reste le même mais la partie intéressante c'est quand on crée la fenêtre principale :</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .if
+uMsg==WM_CREATE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.cbSize,sizeof WNDCLASSEX</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassInfoEx,NULL,addr EditClass,addr wc</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Nous devons d'abord remplir la structure de WNDCLASSEX avec les données de class que nous souhaitons imposer comme superclasse, dans ce cas, c'est (l'Edit Class) la classe D'ÉDITION. Rappelez-vous aussi que vous devez mettre le membre cbSize (de la structure WNDCLASSEX) avant que vous n'appeliez GetClassInfoEx, sinon la structure WNDCLASSEX ne sera pas correctement remplie. Après les retours de GetClassInfoEx, wc est rempli de toute l'information que nous avons besoin pour créer une nouvelle 'Window Class'.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push wc.lpfnWndProc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop OldWndProc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.lpfnWndProc, OFFSET EditWndProc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop wc.hInstance</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov wc.lpszClassName,OFFSET OurClass</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Maintenant nous devons modifier certains membres de wc. Le premier c'est le pointer de la procédure de fenêtre. Puisque nous avons besoin d'enchaîner notre propre procédure de fenêtre avec l'originale, nous devons la sauvegarder dans une variable, c'est pourquoi on l'appelle avec CallWindowProc. Cette technique est identique à la sousclassification sauf que vous modifiez directement la structure WNDCLASSEX sans avoir besoin d'appeler SetWindowLong. Les deux membres suivants doivent aussi être modifiés, sinon vous serez dans l'incapacité d'enregistrer votre nouvelle 'Window Classe',idem pour ce qui concerne hInstance et lpsClassName. Vous devez remplacer l'hInstance original par l'hInstance de votre propre programme. Et vous devez choisir un nouveau nom pour la nouvelle 'class'.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Quand tout est enfin prêt, on registre la nouvelle classe. on obtient une nouvelle class avec quand même certaines caractéristiques de la vieille class.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor ebx,ebx</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edi,20</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.while ebx&lt;6</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR OurClass,NULL,\</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE+WS_BORDER,20,\</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+edi,300,25,hWnd,ebx,\</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov dword ptr [hwndEdit+4*ebx],eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add edi,25</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+inc ebx</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endw</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Maintenant que nous avons enregistré la class, nous pouvons y créer des fenêtres de base. Dans le susdit petit bout de code, j'emploie ebx en tant que compteur de nombre de fenêtres créées. edi est employé comme coordonnée 'Y' du coin gauche supérieur de la fenêtre. Quand une fenêtre est créée, son handle est stocké dans un tableau (informations de type dword). Quand toutes les fenêtres sont créées, le centre d'entrée est sur la première fenêtre. (le centre d'entrée = ex : un bouton est encadré de pointillé où un contrôle d'édition est activée [curseur présent], alors c'est que le centre d'entrée est sur lui.) </font></font>
+<br><font face="Arial,Helvetica"><font size=-1>À ce niveau, on a 6 contrôles d'édition qui acceptent uniquement des chiffres hexadécimaux. La procédure de fenêtre de substitution manipule les filtres (donc pas de caractère autres que 0-9 ou a-f). En réalité, c'est la même chose que pour la procédure de fenêtre de l'exemple de sousclassification. Donc, comme vous pouvez le voir, vous n'avez pas besoin de refaire le travail de sousclassification pour chacun des contrôles d'édition.</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>Pour rendre cet exemple encore plus intéressant, je rajoute un petit bout de code qui manipule le contrôle de navigation grâce à la touche TAB. Normalement, si vous mettez des 'Controls' dans une boîte de dialogue, le manager de boîte de dialogue gère les touches de navigation pour vous. De cette manière vous pouvez grâce à la touche TAB passer au contrôle suivant ou bien avec Shift-Tab revenir au contrôle précédent. Hélas, cette particularité n'est pas disponible si vous placez vos 'Controls' dans une simple fenêtre (au lieu d'une Dialog Box). Vous devez les sous-classer, comme ça vous pourrez gérer les touches Tab et Shift-Tab par vous-même. Dans notre exemple, nous n'avons pas besoin de sous-classer les 'Controls' l'un après l'autre vu qu'on les a déjà superclassés, donc nous pouvons leur fournir "un manager de navigation de contrôle" commun.</font></font>
+<br>&nbsp;
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif al==VK_TAB</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetKeyState,VK_SHIFT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+test eax,80000000</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ZERO?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDNEXT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDFIRST</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDPREV</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindow,hEdit,GW_HWNDLAST</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Le susdit petit bout de code est la procédure EditWndClass. Il vérifie si l'utilisateur appuie sur la touche TAB, si c'est le cas, on appelle GetKeyState pour vérifier si la TOUCHE DES MAJUSCULES (SHIFT) est aussi pressée. GetKeyState renvoie une valeur dans eax qui détermine si la touche indiquée est pressée ou non. Si la touche est appuyée, le Bit de poids fort de eax est rempli. Si 'SHIFT' n'est pas pressé,  on laisse ce Bit à 0. Donc on compare la valeur de retour avec 80000000. Si le Bit de poids fort est à 8, ça signifie que l'utilisateur a appuyé sur shift+tab, que nous devons gérer séparément.<Br>
+Un Dword , donc 32 bit donc (0000 0000 0000 0000 0000 0000 0000 0000)h on met sa partie haute à 1 (1111 0000 0000 0000 0000 0000 0000 0000)h =(8 0 0 0 0 0 0 0)d, car Masm manipule des décimaux par défaut. 
+</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Si l'utilisateur appuie seulement sur la touche TAB, nous appelons GetWindow pour retrouver l'handle du contrôle suivant. Nous utilisons le flag GW_HWNDNEXT pour dire à GetWindow de récupérer l'handle de la fenêtre qui suit la ligne du hEdit courant. Si cette fonction renvoie un NULL, on ne le considère pas comme un handle, ainsi le courant hEdit est le dernier contrôle. Nous "revenons"  donc au premier contrôle en appelant GetWindow avec son flag GW_HWNDFIRST. C'est la même chose pour la configuration SHIFT-TAB que pour la touche TAB, sauf qu'on inverse tout.</font></font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</b></center>
+<DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

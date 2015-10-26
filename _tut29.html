@@ -1,0 +1,240 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 29: Win32 Debug API part 2</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body STYLE="#text-align:justify;" bgcolor="#000000" text="#FFFFFF" link="#FFFFCC" vlink="#FFCCCC" alink="#CCFFCC">
+<h1 align="center"><font face="Arial, Helvetica, sans-serif" color="#FFFFCC">Tutorial 29: Win32 Debug API Partie 2/3</font></h1>
+<p><font face="MS Sans Serif" size="-1">Nous continuons sur le sujet , soit : 'de debug win32 API'. Dans ce tutorial, nous allons voir comment modifier le process du debuggee.<br>
+  Downloadez <b><a href="files/tut29.zip" style="text-decoration:none">l'exemple</a></b></font>.</p>
+<h3><font face="Arial, Helvetica, sans-serif">Théorie:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Dans le tutorial précédent, nous avons vu comment charger le debuggee et gérer les événements de debug qui arrivent dans son process. Pour être utile, notre programme doit être capable de modifier le process de debuggee. Il existe plusieurs APIs pour faire ça.</font></p>
+<ul>
+  <li><font face="MS Sans Serif" size="-1"><b><font color="#FFFFCC">ReadProcessMemory</font></b> 
+    Cette fonction vous permet de lire la mémoire dans le process désigné. Son prototype de fonction est le suivant :</font> 
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">ReadProcessMemory 
+      proto hProcess:DWORD, lpBaseAddress:DWORD, lpBuffer:DWORD, nSize:DWORD, 
+      lpNumberOfBytesRead:DWORD</font></b></font></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#FF9900">hProcess</font></b> 
+      est l'handle du process dans lequel vous souhaitez effectuer votre lecture.<br>
+      <font color="#FF9900"><b>lpBaseAddress</b></font> est l'adresse de départ dans le process cible où vous voulez commencer votre lecture. Par exemple, si vous voulez lire 4 octets du process de debuggee commençant à l'offset 401000, la valeur dans ce paramètre doit être 401000.<br>
+      <font color="#FF9900"><b>lpBuffer</b></font> est l'adresse du buffer qui recevra les octets qu'on va lire dans le process.<br>
+      <font color="#FF9900"><b>nSize</b></font> est le nombre d'octets que vous souhaitez lire.<br>
+      <font color="#FF9900"><b>lpNumberOfBytesRead</b></font> est l'adresse de la variable (de taille dword) qui reçoit le numéro d'octets qu'on aura réellement lus. Si vous vous en foutez, vous pouvez employer un NULL.</font></p>
+  </li>
+  <li><font color="#FFFFCC"><b><font face="MS Sans Serif" size="-1">WriteProcessMemory</font></b></font><font face="MS Sans Serif" size="-1"> est un homologue de <font color="#FFFFCC"><b>ReadProcessMemory</b></font>. 
+    Ça vous permet d'écrire dans la mémoire du process cible. Ses paramètres sont exactement les mêmes que ceux de <font color="#FFFFCC"><b>ReadProcessMemory</b></font></font>. 
+    <p><font face="MS Sans Serif" size="-1">Les deux fonctions API suivantes ont besoin d'une petite explication quant à leur utilisation. Dans un OS multi-taches tel que Windows, on peut avoir plusieurs programmes tournant en même temps. Windows donne un temps d'activité restreint à chacun d'eux. Quand ce temps d'activité expire, Windows gèle le programme qui était en train de tourner et passe au programme suivant qui prend maintenant la priorité la plus haute. juste avant de commuter sur ce nouveau programme, Windows a sauvegardé les valeurs du premier dans les Registres de lien (du premier) pour qu'au moment où il est temps de reprendre le lien, Windows puisse rétablir l'ancien *environnement* de ce lien. Les valeurs des Registres sauvegardés, représentent un ensemble qu'on appelle un contexte. <br>
+      Revenons à notre sujet. Lorsqu'un événement de debug arrive, Windows suspend le debuggee. Le contexte du debuggee est sauvegardé. Puisque le debuggee est suspendu, on est sûrs que les valeurs dans le contexte resteront inchangées. Nous pouvons obtenir les valeurs dans le contexte grâce à <font color="#FFFFCC"><b>GetThreadContext</b></font> 
+      et nous pouvons les changer avec <font color="#FFFFCC"><b>SetThreadContext</b></font>.<br>
+      Ces deux APIs sont extrêmement puissantes. Avec elles, on a à notre portée la puissance du VxD du debuggee : on peut changer les valeurs des registres sauvegardés, et juste avant que le debuggee ne reprenne son exécution, on récupère les anciennes valeurs du contexte de nouveau dans les Registres. Quelque soit les changements qu'on  a fait au contexte est renvoyé en arrière au debuggee, il s'aperçoit de tout. Pensez-y : on peut même changer la valeur du Registre EIP et ainsi détourner le flux exécution n'importe où, où on le souhaite! C'est à dire, l'EIP représente à chaque instant la ligne du programme qui est en train d'être lue par l'ordinateur. De fil en aiguille on avance dans la lecture du programme ligne par ligne. Maintenant, si on est capable de changer la valeur du registre EIP, on peut sauté vraiment où on veut. Alors que normalement c'est l'ordinateur et personne d'autre qui contrôle l'EIP. C'est quelque chose qu'on serait bien incapable de faire en temps normal.</font></p>
+    <p><b><font face="MS Sans Serif" size="-1" color="#CCFFCC">GetThreadContext 
+      proto hThread:DWORD, lpContext:DWORD</font> </b></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#FF9900">hThread</font></b> 
+      est l'handle du lien que vous voulez obtenir dans le context <br>
+<font color="#FF9900"><b>lpContext</b></font> est l'adresse de la structure <font color="#CCFFCC"><b>CONTEXT</b></font> qui sera remplie, lorsque cette fonction retourne avec succès.
+</font></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#FFFFCC">SetThreadContext</font></b> 
+      a exactement les mêmes paramètres. On va voir à quoi ressemble une structure de CONTEXT :</font></p>
+  </li>
+  <li><b><font face="MS Sans Serif" size="-1">CONTEXT STRUCT <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">ContextFlags dd ? <br>
+    ;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_DEBUG_REGISTERS</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------<br>
+    iDr0 dd ? <br>
+    iDr1 dd ? <br>
+    iDr2 dd ? <br>
+    iDr3 dd ? <br>
+    iDr6 dd ? <br>
+    iDr7 dd ? <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_FLOATING_POINT</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------<br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">FloatSave FLOATING_SAVE_AREA <> 
+    <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_SEGMENTS</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">regGs dd ? <br>
+    regFs dd ? <br>
+    regEs dd ? <br>
+    regDs dd ? <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_INTEGER</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">regEdi dd ? <br>
+    regEsi dd ? <br>
+    regEbx dd ? <br>
+    regEdx dd ? <br>
+    regEcx dd ? <br>
+    regEax dd ? <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_CONTROL</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">regEbp dd ? <br>
+    regEip dd ? <br>
+    regCs dd ? <br>
+    regFlag dd ? <br>
+    regEsp dd ? <br>
+    regSs dd ? <br>
+    </font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;----------------------------------------------------------------------------------------------------------<br>
+    ; Cette section est renvoyée si ContextFlags contient la valeur CONTEXT_EXTENDED_REGISTERS</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">;-----------------------------------------------------------------------------------------------------------</font></b></li>
+  <li><b><font face="MS Sans Serif" size="-1">ExtendedRegisters db MAXIMUM_SUPPORTED_EXTENSION 
+    dup(?) CONTEXT ENDS </font></b> 
+    <p><font face="MS Sans Serif" size="-1">Comme vous pouvez le voir, les membres de ces structures sont des imitations des Registres réels du processeur. Avant que vous ne puissiez employer cet artifice, vous devez indiquer quels groupes de Registres vous souhaitez lire/écrire dans le membre <font color="#FF9900"><b>ContextFlags</b></font >. 
+      Par exemple, si vous voulez lire/écrire tous les Registres, vous devez mettre le membre <font color="#CCFFCC"><b>CONTEXT_FULL</b></font> dans la structure <font color="#FF9900"><b>ContextFlags</b></font>.  
+	 Si vous voulez seulement lire/écrire regEbp, regEip, regCs, regFlag, regEsp ou regSs, vous devez mettre le membre <font color="#CCFFCC"><b>CONTEXT_CONTROL</b></font > dans <fonte color="#FF9900"><b>ContextFlags</b></font>.</font></p>
+	 <p><font face="MS Sans Serif" size="-1">Encore une chose que vous devez vous rappeler, en employant la structure <font color="#CCFFCC"><b>CONTEXT</b></font>: elle doit absolument fonctionner avec des modèles dword sinon vous obtiendriez des résultats étranges sous NT. Vous devez mettre &quot;align dword&quot; juste au-dessus de la ligne qui la déclare, de cette façon : </font></p>
+    <p><font face="MS Sans Serif" size="-1"><b><font color="#CCFFCC">align dword<br>
+      MyContext CONTEXT &lt;&gt;</font></b></font></p>
+  </li>
+</ul>
+<h3><font face="Arial, Helvetica, sans-serif">Exemple:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Ce premier exemple sert à montrer comment on utilise un <font color="#FFFFCC"><b>Debugger</b></font> de type un <font color="#FFFFCC"><b>ActiveProcess</b></font>. D'abord, on doit lancer une cible qui s'appelle win.exe, ce programme est une boucle infinie qui tourne en rond sans pouvoir en sortir et on ne peut donc pas arriver à son autre fonction (qui est juste après) qui affiche une fenêtre à l'écran. A partir de là, on lance notre exemple (appelé debug2.exe), il s'attachera à win.exe et modifiera son code tel que win.exe puisse sortir de sa boucle infinie et ainsi il affichera sa fenêtre.</font></p>
+<FONT COLOR="#6600CC">Si ça ressemble pas à un Memory-Patch çà... :)</FONT>
+<p><font face="Fixedsys" size="-1">.386 <br>
+  .model flat,stdcall <br>
+  option casemap:none <br>
+  include \masm32\include\windows.inc <br>
+  include \masm32\include\kernel32.inc <br>
+  include \masm32\include\comdlg32.inc <br>
+  include \masm32\include\user32.inc <br>
+  includelib \masm32\lib\kernel32.lib <br>
+  includelib \masm32\lib\comdlg32.lib <br>
+  includelib \masm32\lib\user32.lib <br>
+  <br>
+  .data <br>
+  AppName db "Win32 Debug Example no.2",0 <br>
+  ClassName db "SimpleWinClass",0 <br>
+  SearchFail db "Cannot find the target process",0 <br>
+  TargetPatched db "Target patched!",0 <br>
+  buffer dw 9090h<br>
+  </font><font face="Fixedsys" size="-1"><br>
+  .data? <br>
+  DBEvent DEBUG_EVENT <> <br>
+  ProcessId dd ? <br>
+  ThreadId dd ? <br>
+  align dword <br>
+  context CONTEXT <> <br>
+  <br>
+  .code <br>
+  start: <br>
+  invoke FindWindow, addr ClassName, NULL <br>
+  .if eax!=NULL <br>
+  &nbsp;&nbsp;&nbsp; invoke GetWindowThreadProcessId, eax, addr ProcessId <br>
+  &nbsp;&nbsp;&nbsp; mov ThreadId, eax <br>
+  &nbsp;&nbsp;&nbsp; invoke DebugActiveProcess, ProcessId <br>
+  &nbsp;&nbsp;&nbsp; .while TRUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke WaitForDebugEvent, addr DBEvent, 
+  INFINITE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .break .if DBEvent.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov context.ContextFlags, 
+  CONTEXT_CONTROL <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke GetThreadContext,DBEvent.u.CreateProcessInfo.hThread, 
+  addr context &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke WriteProcessMemory, 
+  DBEvent.u.CreateProcessInfo.hProcess, context.regEip ,addr buffer, 2, NULL<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox, 0, 
+  addr TargetPatched, addr AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXCEPTION_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ContinueDebugEvent, DBEvent.dwProcessId,DBEvent.dwThreadId, DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .continue 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke ContinueDebugEvent, DBEvent.dwProcessId, 
+  DBEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED <br>
+  &nbsp;&nbsp;&nbsp;.endw <br>
+  .else <br>
+  &nbsp;&nbsp;&nbsp; invoke MessageBox, 0, addr SearchFail, addr AppName,MB_OK+MB_ICONERROR 
+  .endif <br>
+  invoke ExitProcess, 0 <br>
+  end start </font></p>
+<p><font face="Fixedsys"><font size="-1">;--------------------------------------------------------------------<br>
+  ; Le code source de win.asm  est en réalité une simple fenêtre comme<br>
+  ; celle de l'exemple du tutorial 2 avec une boucle infinie insérée<br>
+  ; juste avant qu'on ne puisse arriver jusqu'à elle (la fenêtre).<br>
+  ;----------------------------------------------------------------------</font></font></p>
+<p><font face="Fixedsys">......<br>
+  mov wc.hIconSm,eax <br>
+  invoke LoadCursor,NULL,IDC_ARROW <br>
+  mov wc.hCursor,eax <br>
+  invoke RegisterClassEx, addr wc <br>
+  INVOKE CreateWindowEx,NULL,ADDR ClassName,ADDR AppName,\ WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\ 
+  CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,NULL,NULL,\ hInst,NULL <br>
+  mov hwnd,eax <br>
+  <font color="#FF6666">jmp $ <FONT COLOR="#FF0000">;&lt;---- Voici notre boucle infinie. Elle boucle sur elle-même.</FONT> 
+  </font><br>
+  invoke ShowWindow, hwnd,SW_SHOWNORMAL <br>
+  invoke UpdateWindow, hwnd <br>
+  .while TRUE <br>
+  &nbsp;&nbsp;&nbsp;invoke GetMessage, ADDR msg,NULL,0,0 <br>
+  &nbsp;&nbsp;&nbsp;.break .if (!eax) <br>
+  &nbsp;&nbsp;&nbsp;invoke TranslateMessage, ADDR msg <br>
+  &nbsp;&nbsp;&nbsp;invoke DispatchMessage, ADDR msg <br>
+  .endw <br>
+  mov eax,msg.wParam <br>
+  ret <br>
+  WinMain endp </font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Analyse:</font></h3>
+<p><font face="Fixedsys" size="-1">invoke FindWindow, addr ClassName, NULL </font></p>
+<p><font face="MS Sans Serif" size="-1">Notre programme a besoin de s'attacher au debuggee avec <font color="#FFFFCC"><b>DebugActiveProcess </b></font> lequel a besoin de l'ID du process du debuggee. Nous pouvons obtenir l'ID du process en appelant <font color="#FFFFCC "><b>GetWindowThreadProcessId</b></font> qui a à son tour à besoin de l'handle de la fenêtre en tant que paramètre. Donc nous avons d'abord besoin d'obtenir cet handle.<br>
+  Avec <font color="#FFFFCC"><b>FindWindow</b></font>, nous pouvons spécifier le nom de la Window Class (classe de fenêtre) dont nous avons besoin. Il renvoie l'handle de la fenêtre créée par cette Window Class. S'il renvoie un <font color="#CCFFCC"><b>NULL</b></font>, aucune fenêtre de cette classe n'est présente.</font></p>
+<p><font face="Fixedsys" size="-1"> .if eax!=NULL <br>
+  &nbsp;&nbsp;&nbsp; invoke GetWindowThreadProcessId, eax, addr ProcessId <br>
+  &nbsp;&nbsp;&nbsp; mov ThreadId, eax <br>
+  &nbsp;&nbsp;&nbsp; invoke DebugActiveProcess, ProcessId </font></p>
+<p><font face="MS Sans Serif" size="-1">Après avoir obtenu l'ID du process, nous pouvons appeler <font color="#FFFFCC"><b>DebugActiveProcess</b></font>. Comme ça, nous passons à la boucle de debug attendant les événements de debug.</font></p>
+<p><font face="Fixedsys" size="-1">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov context.ContextFlags, 
+  CONTEXT_CONTROL <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke GetThreadContext,DBEvent.u.CreateProcessInfo.hThread, 
+  addr context &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</font></p>
+<p><font face="MS Sans Serif" size="-1">Quand on arrive à la partie du programme qui contient la ligne  <font color="#CCFFCC"><b>CREATE_PROCESS_debug_INFO</b></font>, ça signifie que le debuggee est suspendu, disponible pour que nous puissions faire l'acte de chirurgie en son process. Dans cet exemple, nous remplaçons l'instruction de la boucle infinie dans le debuggee (qui est un Jmp codé en langage machine par 0EBh 0FEh) par deux NOP (90h 90h). <br>
+  D'abord, nous avons besoin d'obtenir l'adresse où se situe cette instruction (ce Jmp). Puisque le debuggee est déjà dans la boucle au moment où notre programme est attaché à lui, alors EIP indique forcément l'adresse de cette instruction. Tout ce que nous avons besoin de faire, c'est de récupérer la valeur de EIP. On utilise <font color="#FFFFCC"><b>GetThreadContext</b></font> pour faire ça.
+  Nous plaçons le membre <font color="#CCFFCC"><b>ContextFlags</b></font> dans le <font color="#CCFFCC"><b>CONTEXT_CONTROL</b></font> pour indiquer à <font color="#FFFFCC"><b>GetThreadContext</b></font> que nous souhaitons qu'il remplisse les Registres de &quot;control&quot; avec les membres de la structure <font color="#CCFFCC"><b>CONTEXT</b></font>.</font> Ainsi par exemple EIP sera récupéré dans notre Registre de Control appelé <FONT COLOR="#FFFF00">regEip</FONT>.</p>
+<p><font face="Fixedsys" size="-1">invoke WriteProcessMemory, DBEvent.u.CreateProcessInfo.hProcess, context.regEip 
+  ,addr buffer, 2, NULL</font></p>
+<p><font face="Fixedsys" size="-1"></font><font face="MS Sans Serif" size="-1">Maintenant que nous avons la valeur de l'EIP, nous pouvons appeler <font color="#FFFFCC"><b>WriteProcessMemory</b></font> pour récrire par dessus l'instruction  &quot;jmp $&quot; avec NOP, ainsi on aura aidé efficacement le debuggee à sortir de sa boucle infinie. Après ça, nous affichons un message destiné à l'utilisateur et appelons ensuite <font color="#FFFFCC"><b>ContinueDebugEvent</b></font> pour reprendre le debuggee. 
+Maintenant que l'instruction &quot;jmp $&quot; est remplacée par deux instructions NOP, le debuggee est capable de continuer jusqu'à atteindre l'affichage de sa fenêtre et du message. La preuve, c'est que nous verrons apparaître cette fenêtre à l'écran. </font></p>
+<p><font face="MS Sans Serif" size="-1">L'autre exemple (Debug3.exe) utilise une approche un peu différente pour casser la boucle infinie.</font></p>
+<p> <font face="Fixedsys">.......<br>
+  .......<br>
+  .if DBEvent.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT <br>
+  &nbsp;&nbsp;&nbsp;mov context.ContextFlags, CONTEXT_CONTROL <br>
+  &nbsp;&nbsp;&nbsp;invoke GetThreadContext,DBEvent.u.CreateProcessInfo.hThread, 
+  addr context <br>
+  &nbsp;&nbsp;&nbsp;add context.regEip,2 <br>
+  &nbsp;&nbsp;&nbsp;invoke SetThreadContext,DBEvent.u.CreateProcessInfo.hThread, 
+  addr context <br>
+  &nbsp;&nbsp;&nbsp;invoke MessageBox, 0, addr LoopSkipped, addr AppName, MB_OK+MB_ICONINFORMATION 
+  <br>
+  .......<br>
+  ....... </font></p>
+<p><font face="MS Sans Serif" size="-1">Comme pour l'exemple précédent on appelle toujours <font color="#FFFFCC"><b>GetThreadContext</b></font> pour obtenir la valeur actuelle de l'EIP, mais au lieu de l'action : 'effacer la boucle du &quot;jmp$&quot; avec deux instructions NOP (pour briser la boucle), ici on incrémente la valeur de <font color="#FFCCCC"><b>regEip</b></font> par 2 (regEip-->EIP+2) grâce à l'instruction &quot;skip over&quot;. Le résultat, c'est que lorsque le debuggee reprend le contrôle, il reprend son exécution à l'instruction suivante, juste après le &quot;jmp$&quot;. Donc on ne détruit pas la boucle mais on passe par dessus. Vous allez me dire pourquoi +2 ! le saut 'jmp' est codé en langage machine sur deux octets (EB et FE ou 0EBh 0FEh) donc quand l'EIP est sur le 'jmp' on est sur EB si on ajoute 2 à l'EIP, on passe sur EB puis sur FE et donc on arrive à ce qui suit le jmp donc à l'instuction suivante. On vient de sauter par dessus !  </font></p>
+<p><font face="MS Sans Serif" size="-1">Maintenant vous comprenez la puissance de 'Get & SetThreadContext'. Vous pouvez aussi modifier d'autres Registres et leurs valeurs seront ensuite rétablies après le passage du debuggee. Vous pouvez même insérer l'instruction 'int 3h' lequel sert à placer des Break Points dans le programme qu'on est en train de debugger.</font></p>
+<hr>
+<div align="center"><br>
+  <font color="#FFFFFF"><b><font face="MS Sans Serif" size="-1">[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</font></b></font></div>
+  <BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+<p>&nbsp;</p>
+</body>
+</html>

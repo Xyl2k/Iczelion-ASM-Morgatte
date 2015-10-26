@@ -1,0 +1,249 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32asm tutorial 17: Dynamic Link Libraries</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFF99"><BR>Tutorial 17: Les DLL<BR><FONT SIZE=-1>(Dynamic Link Libraries)</FONT><BR>Bibliothèques de Liaison, Dynamiques<BR></font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>Dans ce Tutorial, nous allons voir les DLLs, ce qu'elles sont et comment les créer.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Vous pouvez télécharger l'exemple <a href="files/tut17.zip">ici</a>.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#99FF99"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Si vous programmez depuis un petit moment déjà, vous constaterez que les programmes que vous avez l'habitude d'écrire ont quelques routines de code en communs. C'est vraiment une perte de temps de les récrire à chaque fois que vous commencez à développer de nouveaux programmes. Revenons en arrière, aux vieux jours du DOS, les programmeurs ont faits en sorte de stocker les routines les plus généralement employées dans une ou plus bibliothèques. Quand ils veulent utiliser les fonctions, ils ont juste à lier  la bibliothèque avec le fichier d'objet, et le linker extrait les fonctions de la bibliothèque et les insère dans le fichier final exécutable. Ce processus est appelé la jonction statique. Les bibliothèques 'Runtime du C' sont de bons exemples. L'inconvénient de cette méthode c'est que vous avez des fonctions identiques dans chaque programme qui les appelle. Votre espace disque est gaspillé stockant plusieurs copies identiques des fonctions. Mais pour les programmes sous DOS, cette méthode est tout à fait valable puisqu'il n'y a généralement qu'un seul programme en action dans la mémoire. Ainsi il n'y a aucune perte précieuse de mémoire.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Sous Windows, la situation devient beaucoup plus critique parce que vous pouvez avoir plusieurs programmes tournant simultanément. La mémoire sera rapidement saturée si votre programme est vraiment grand. Windows a une solution pour ce type de problème : les bibliothèques de liaison dynamiques. Une bibliothèque de liaison dynamique est une sorte de regroupement commun de plusieurs fonctions. Windows ne chargera pas en mémoire plusieurs copies d'une dll, même dans le cas où il y a beaucoup de programmes tournant en même temps. Il fera seulement une copie du dll que le programme emploie dans la mémoire. Et je dois clarifier un peu ce point. En réalité, tous les processus qui emploient la même dll, auront leurs propres copies de cette dll. C'est comme si il y avait plusieurs copies de cette dll en mémoire. Mais en réalité, Windows rend ça magique avec la pagination et tous les morceaux de processus ayant le même code dll. Ainsi en mémoire physique, il y a uniquement une copie du code de la dll. Cependant, chaque process aura sa propre section de données unique du dll.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Le programme se lie avec une DLL pendant l'exécution, à la différence de la vieille bibliothèque statique. C'est pourquoi on appelle la bibliothèque de liaison dynamique. Vous pouvez aussi vous défaire d'une DLL pendant l'exécution quand vous n'en avez plus besoin. Si ce programme est le seul à employer la DLL, il la virera immédiatement de la mémoire. Mais si la DLL est toujours employée par d'autres programmes, la DLL reste en mémoire tant que le dernier programme qui l'emploie s'en défasse.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Cependant, le linker a un travail plus difficile quand il exécute l'adresse fixups pour le fichier final exécutable. Puisqu'on ne peut pas "extraire" les fonctions et les insérer complètement dans le fichier final exécutable, d'une façon ou d'une autre on doit stocker assez d'informations sur la DLL et ses fonctions dans le fichier executable final pour être capable de charger correctement la DLL pendant l'exécution.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>C'est là ! que la bibliothèque d'importation entre en jeu. Une bibliothèque d'importation contient les informations de la DLL qu'il représente. Le linker peut extraire des bibliothèques d'importation les renseignements dont il a besoin. Quand le loader Windows charge le programme en mémoire, il voit que le programme se lie avec une DLL donc il essai de trouver cette DLL et la réécrit aussi dans l'espace d'adresse du process(du programme), puis exécute les adresses hors du programme pour les fonctions Call qui appellent la DLL.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Vous pouvez vouloir charger la DLL vous-même sans compter sur le loader (chargeur) de Windows. Cette méthode a son pour et son contre :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>Il n'y a pas besoin d'une bibliothèque d'importation donc vous pouvez charger et employer n'importe qu'elle DLL même si elle n'est accompagnée d'aucune bibliothèque d'importation. Cependant, vous avez quand même besoin de savoir certaines choses sur les fonctions qu'elle vous propose, des choses comme combien de paramètres elles utilisent…</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Si vous laissez le loader charger la DLL pour votre programme, et que le loader ne trouve pas cette DLL il annoncera "Le fichier .DLL exigé, xxxxx.DLL est manquant" et paf! Votre programme n'a aucune chance d'être lancé même si cette DLL n'est pas essentiel pour son fonctionnement minimal. Si vous chargez le DLL vous-même, et que la DLL ne peut pas être trouvé et que ce n'est pas essentiel pour l'opération, votre programme le fait remarquer à l'utilisateur mais peut continuer.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Vous pouvez utiliser et appeler d'autres fonctions *non décrites dans ces Tuts* qui ne sont pas incluses dans les bibliothèques d'importation. À condition que vous connaissiez assez de renseignements sur ces fonctions.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Si vous utilisez LoadLibrary, vous devez appeler GetProcAddress pour chaque fonction que vous souhaitez appeler. GetProcAddress retrouve l'adresse de l'entrypoint d'une fonction à l'intérieur d'une DLL particulière. (l'addresse où commence une fonction particulière). Donc il se peut que votre code soit un peu plus grand et plus lent, mais ça change pas grand chose.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>En comparant les avantages / inconvénients d'un appel à LoadLibrary, nous entrons maintenant dans les détails pour créer une DLL.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Le code suivant est le squelette de la DLL. (DLL skeleton.)</font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1>;--------------------------------------------------------------------------------------</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DLLSkeleton.asm</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>;--------------------------------------------------------------------------------------</font></font>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>option
+casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>include
+\masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>include
+\masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>include
+\masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>DllEntry
+proc hInstDLL:HINSTANCE, reason:DWORD, reserved1:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>DllEntry
+Endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FFFF"><font size=-1>;---------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FFFF"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+C'est une fonction factice</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FFFF"><font size=-1>;
+Ça ne fait rien. Je l'ai mise ici pour montrer où vous pouvez insérer des fonctions à l'intérieur d'une DLL.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#66FFFF"><font size=-1>;----------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>TestFunction
+proc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>TestFunction
+endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>End
+DllEntry</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><BR><BR><font face="Arial,Helvetica"><font size=-1>;-------------------------------------------------------------------------------------</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DLLSkeleton.def</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>;-------------------------------------------------------------------------------------</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">LIBRARY</font></b>&nbsp;&nbsp;
+DLLSkeleton</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">EXPORTS</font></b>&nbsp;&nbsp;
+TestFunction</font></font>
+<br><font face="Arial,Helvetica"><font size=-1></font></font>&nbsp;<font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1>Ce tout petit programme ci-dessus est le squelette de la DLL. Chaque DLL doit avoir une fonction d'entrypoint. Windows appellera la fonction d'entrypoint chaque fois que :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>La DLL est loadée en premier</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>La DLL est unloadée (libérée)</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Un lien est créé dans ce même process</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>Un lien est détruit dans ce même process</font></font></li>
+</ul>
+<b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>DllEntry
+proc hInstDLL:HINSTANCE, reason:DWORD, reserved1:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>DllEntry
+Endp</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1>Vous pouvez nommer la fonction d'entrypoint comme vous le souhaitez tant que vous avez une FIN correspondante à 'END <Nom de la fonction entrypoint>' . Cette fonction prend trois paramètres, dont seulement les deux premier sont importants.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCC33">hInstDLL</font></b>
+est l'handle du module(de la fonction) de la DLL. Ce n'est pas le même que l'instance handle du process. Vous devez garder cette valeur si vous avez besoin de l'employer plus tard. Vous ne pourrez pas l'obtenir de nouveau aussi facilement.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCC33">reason</font></b>
+peut être une des quatre valeurs :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">DLL_PROCESS_ATTACH</font></b>
+La DLL reçoit cette valeur quand il est injecté la toute première fois dans l'espace d'adresses du process. Vous pouvez utiliser cette occasion pour faire l'initialisation.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">DLL_PROCESS_DETACH</font></b>
+La DLL reçoit cette valeur quand elle est unloadée (supprimée) de l'espace d'adresses du process. Vous pouvez employer cette occasion pour faire un peu de nettoyage comme désinffecter la mémoire etc…</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">DLL_THREAD_ATTACH</font></b>
+La DLL reçoit cette valeur quand le process crée un nouveau lien.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">DLL_THREAD_DETACH</font></b>
+La DLL reçoit cette valeur quand un lien dans le process est détruit.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>Renvoyez TRUE dans eax si vous souhaitez que la DLL continue son exécution. Si vous renvoyez FALSE, la DLL ne sera pas chargé. Par exemple, si votre code d'initialisation doit réserver de la mémoire et qu'il ne peut pas faire ça avec succès, la fonction d'entrypoint doit renvoyer FALSE pour indiquer que la DLL ne peut pas être lancée.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Vous pouvez placer vos fonctions dans la DLL après la fonction Entrypoint ou même avant çà. Mais si vous voulez qu'elles soient CALLables par d'autres programmes, vous devez mettre leurs noms dans la liste d'exportation du fichier de définition de module (.def).</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Une DLL a besoin d'un fichier de définition de module dans son processus liée à son développement. Nous y jetterons un coup d'œil maintenant.</font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">LIBRARY</font></b>&nbsp;&nbsp;
+DLLSkeleton</font></font>
+<br><font face="Arial,Helvetica"><font size=-1><b><font color="#FFCCCC">EXPORTS</font></b>&nbsp;&nbsp;
+TestFunction</font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font size=-1>Normalement vous devez avoir la première ligne. La déclaration <b><font color="#FFCCCC">LIBRARY</font></b> définit le nom du module interne (la fonction souhaitée) de la DLL. Vous devez correspondre avec ce module grâce au nom du fichier de la DLL.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>La déclaration <b><font color="#FFCCCC">EXPORTS</font></b> dit au linker quelles fonctions sont en train de tourner dans la DLL, c'est-à-dire quelles fonctions sont déjà utilisées par d'autres programmes. Dans l'exemple, nous voulons que d'autres modules soient capables d'appeler TestFunction, donc nous mettons son nom dans la déclaration  <b><font color="#FFCCCC">EXPORTS</font></b>.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Un autre changement c'est le commutateur du linker. Vous devez mettre le commutateut <b><font color="#FFCCCC">/DLL</font></b> et <b><font color="#FFCCCC">/DEF:&lt;votre nom de fichier def&gt; </font></b>
+dans votre linker de commutation comme cela :</font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">link
+</font><font color="#FFCCCC">/DLL</font><font color="#FFFF00"> /SUBSYSTEM:WINDOWS
+</font><font color="#FFCCCC">/DEF:DLLSkeleton.def</font><font color="#FFFF00">
+/LIBPATH:c:\masm32\lib DLLSkeleton.obj</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Les commutateurs d'assembleur sont les mêmes, à savoir /c /coff /Cp. Ainsi après que vous ayez lié le fichier objet, vous obtiendrez *.DLL et *.lib. Le *.lib est la bibliothèque d'importation que vous pouvez employer pour vous lier avec d'autres programmes qui emploient les fonctions de votre DLL.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ensuite je vous montrerai comment employer LoadLibrary pour charger une DLL.</font></font></font><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><BR><BR><BR><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>;---------------------------------------------------------------------------------------------</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+UseDLL.asm</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>;----------------------------------------------------------------------------------------------</font></font></font>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>LibName db "DLLSkeleton.dll",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>FunctionName db "TestHello",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>DllNotFound db "Cannot load library",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>AppName db "Load Library",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>FunctionNotFound db "TestHello function not found",0</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hLib dd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; l' handle de la librairie (l' handle de la DLL)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TestHelloAddr dd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; l'adresse de la function TestHello</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadLibrary,addr LibName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;---------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Appelle LoadLibrary avec le nom de la DLL désirée. Si l'appel est couronné de succès</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Il renverra l'handle de la bibliothèque (DLL). Sinon, il renverra le NULL.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Vous pouvez passer l'handle de la bibliothèque à GetProcAddress ou n'importe quelle fonction qui en a besoin</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+de l'handle d'une DLL comme paramètre.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,NULL,addr DllNotFound,addr AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hLib,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetProcAddress,hLib,addr FunctionName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Quand vous obtenez l'handle de la bibliothèque, vous le passez à GetProcAddress avec l'adresse</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+du nom de la fonction de la DLL que vous souhaitez appeler. Ceci renvoie l'adresse</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+de la fonction si tout s'est passé avec succès. Autrement, il renvoie le NULL.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Les adresses des fonctions ne changent pas à moins que vous ne déchargiez puis rechargiez la bibliothèque.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Donc vous pouvez les placer dans des variables globales pour de futures utilisations.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,NULL,addr FunctionNotFound,addr AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov TestHelloAddr,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+call [TestHelloAddr]</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Ensuite, vous pouvez appeler la fonction avec un appel simple avec la variable contenant</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+l'adresse de la fonction comme l'opérande.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke FreeLibrary,hLib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;
+Quand vous n'avez plus besoin de la bibliothèque, vous la déchargez avec FreeLibrary.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFCCCC"><font size=-1>;-------------------------------------------------------------------------------------------------------------</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>end
+start</font></font></font></b><font face="Arial,Helvetica"><font size=-1></font></font>
+<p><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Donc vous pouvez voir que l'utilisation de LoadLibrary est un peu plus impliquée mais c'est aussi plus flexible.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

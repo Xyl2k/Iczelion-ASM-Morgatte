@@ -1,0 +1,562 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 12: Memory Management and File I/O</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900"><font size=+2>Tutorial 12 : Gestion de la Mémoire<BR>Et des Fichiers d'entrée-sortie </font></font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous allons étudier de façon rudimentaire la gestion de la mémoire et les opérations les fichiers i/o (i/o=input/output=entrée sortie) dans ce Tutorial. En plus nous utiliserons des boîtes de dialogue communes en tant que dispositifs d'entrée-sortie.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez l'exemple <a href="files/tut12.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La gestion de la mémoire sous Win32 du point de vue de l'application est très simple et directe. Chaque processus possède 4 GB d'espace d'adresse mémoire. Le modèle de mémoire employé, est appelé le modèle de mémoire 'FLAT'(plat). Dans ce modèle, tous les registres de segment pointent sur la même adresse de départ et l'offset est sur 32 bits. Ainsi, une application peut accéder à n'importe quel endroit de la mémoire dans son propre espace d'adresse sans avoir besoin de changer la valeur des registres. Ça simplifie beaucoup la gestion de la mémoire. Il n'y a plus de pointers ou registres "Near" ou "FAR" désormais (pointers proches ou lointains).</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Sous Win16, il y a deux principales sortes de fonctions API de mémoire : Global et Local. Le type d'API Global peut utiliser des Call qui vont vers des parties de mémoire se trouvant dans d'autres segments. Ainsi ce type d'API Global sont des fonctions de mémoires "lointaines". Le type d'API Local utilise des Call qui traitent uniquement avec la partie locale où le processus en est . Donc ce sont des fonctions de mémoire "proches". Sous Win32, ces deux types sont identiques. Si vous appelez GlobalAlloc ou LocalAlloc, vous obtenez exactement le même résultat.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Voici les étapes pour allouer et utiliser la mémoire :</font></font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Réservez un bloc de mémoire en appelant <b>GlobalAlloc</b>. Cette fonction renvoie l'handle du bloc de mémoire demandé.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>"Lockez(Fermez)" le bloc de mémoire en appelant <b>GlobalLock</b>. Cette fonction reçoit l'handle du bloc de mémoire et renvoie le pointer du bloc de mémoire.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez employer le pointer pour lire ou écrire dans cette mémoire.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>"Ouvrez" le bloc de mémoire en appelant <b>GlobalUnlock</b>. Cette fonction rend nul et sans effet le pointer du bloc de mémoire.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Libérez le bloc de mémoire en appelant <b>GlobalFree</b>. Cette fonction reçoit l'handle du bloc de mémoire.</font></font></font></li>
+</ol>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez aussi remplacer "Global" par "Local" comme LocalAlloc, LocalLock, etc.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Cette méthode sera davantage simplifiée plus loin en employant le flag 'GMEM_FIXED', dans l'appel de GlobalAlloc. Si vous utilisez ce flag, la valeur de retour de Global/LocalAlloc sera le pointer du bloc de mémoire alloué, et non pas l'Handle du bloque de mémoire. Vous ne devez pas appeler Global/LocalLock et vous pouvez passer le pointer à Global/LocalFree sans appeler Global/LocalUnlock d'abord. Mais dans ce Tutorial, j'emploierai l'approche "traditionnelle".</font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Les fichiers d'entrée-sortie sous Win32 ressemblent étonnement à ceux sous DOS. Les étapes nécessaires sont les mêmes. Vous avez seulement besoin de changer les appels aux API et c'est fait. Les étapes exigées sont les suivantes :</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<ol>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ouvrez ou créez le fichier en appelant la fonction <b>CreateFile</b>. Cette fonction est bourrée de ressources : en plus des fichiers, elle est capable d'ouvrir des ports de communication, des lecteurs de disques ou le clavier. En cas de succès (quand tout ce passe bien), il renvoie l'handle du fichier ou celui du dispositif. Vous pouvez alors employer cet handle pour exécuter des opérations sur le fichier ou le dispositif.</font></font></font></li>
+
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Déplacez le fichier pointer(sélectionné) à l'emplacement désiré en appelant <b>SetFilePointer</b>.</font></font></font>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Exécutez, lisez ou écrivez l'opération en appelant <b>ReadFile</b> ou <b>WriteFile</b>. Ces fonctions transfèrent des données d'un bloc de mémoire un fichier. Donc vous devez allouer(réserver) un bloc de mémoire assez grande pour qu'il puisse contenir les données.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Fermez le fichier en appelant <b>CloseHandle</b>. Cette fonction reçoit l'Handle du fichier.</font></font></font></li>
+</ol>
+
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Contenu:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le programme inscrit ci-dessous, affiche une boîte de dialogue qui sert à ouvrir des fichiers. Il laisse l'utilisateur choisir un fichier texte quelconque pour l'ouvrir puis affiche le contenu de ce fichier dans une fenêtre d'édition à l'intérieur de son secteur client. L'utilisateur a la possibilité de modifier le texte dans la zone d'édition à sa guise puis ensuite il peut sauvegarder le contenu dans un fichier.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\comdlg32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\comdlg32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_OPEN equ 1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_SAVE equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT equ 3</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MAXSIZE equ 260</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MEMSIZE equ 65535</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>EditID equ 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; n° ID de la zone d'édition.</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName db "Win32ASMEditClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName db "Win32 ASM Edit",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>EditClass db "edit",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName db "FirstMenu",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ofn&nbsp;&nbsp;
+OPENFILENAME &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FilterString db "All Files",0,"*.*",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "Text Files",0,"*.txt",0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>buffer db MAXSIZE dup(0)</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hwndEdit HWND ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; L'Handle de la zone d'édition.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hFile HANDLE ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Handle du fichier.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hMemory HANDLE ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+;Handle du bloc de mémoire réservé.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>pMemory DWORD ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+;Pointer du bloc de mémoire réservé</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>SizeReadWrite DWORD ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Nombre d'octets lu ou écrit réalité. (dans le bloque mémoire on peut très bien ne pas tout utiliser).</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetModuleHandle, NULL</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetCommandLine<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;mov CommandLine,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:SDWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,300,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+proc uses ebx hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR EditClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_VISIBLE or WS_CHILD or ES_LEFT or ES_MULTILINE or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ES_AUTOHSCROLL or ES_AUTOVSCROLL,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+0,0,0,hWnd,EditID,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndEdit,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;====================================================</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Initialisation des members de la structure OPENFILENAME</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;====================================================</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.lStructSize,SIZEOF ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hWndOwner</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFilter, OFFSET FilterString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFile, OFFSET buffer</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.nMaxFile,MAXSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_SIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edx,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr edx,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0ffffh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MoveWindow,hwndEdit,0,0,eax,edx,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_OPEN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.Flags, OFN_FILEMUSTEXIST or \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_PATHMUSTEXIST or OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetOpenFileName, ADDR ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateFile,ADDR buffer,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+GENERIC_READ or GENERIC_WRITE ,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FILE_SHARE_READ or FILE_SHARE_WRITE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,OPEN_EXISTING,FILE_ATTRIBUTE_ARCHIVE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hFile,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalAlloc,GMEM_MOVEABLE or GMEM_ZEROINIT,MEMSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; hMemory,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalLock,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; pMemory,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReadFile,hFile,pMemory,MEMSIZE-1,ADDR SizeReadWrite,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,WM_SETTEXT,NULL,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalUnlock,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalFree,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif ax==IDM_SAVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.Flags,OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetSaveFileName, ADDR ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateFile,ADDR buffer,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+GENERIC_READ or GENERIC_WRITE ,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FILE_SHARE_READ or FILE_SHARE_WRITE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,CREATE_NEW,FILE_ATTRIBUTE_ARCHIVE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hFile,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalAlloc,GMEM_MOVEABLE or GMEM_ZEROINIT,MEMSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; hMemory,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalLock,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; pMemory,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,WM_GETTEXT,MEMSIZE-1,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke WriteFile,hFile,pMemory,eax,ADDR SizeReadWrite,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalUnlock,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalFree,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow, hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>xor&nbsp;&nbsp;&nbsp;
+eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end
+start</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p>
+<hr WIDTH="100%">
+<h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Analyse:</font></font></font></b></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR EditClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_VISIBLE or WS_CHILD or ES_LEFT or ES_MULTILINE or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ES_AUTOHSCROLL or ES_AUTOVSCROLL,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+0,0,0,hWnd,EditID,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndEdit,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans la section WM_CREATE, nous créons un contrôle d'édition (ou une zone d'édition, de saisie). Notez que les paramètres x, y, width, height qui sont les dimensions du contrôle sont tous mis à zéros puisque nous redéfinirons leurs tailles plus tard pour que son secteur client soit contenu en entier dans la fenêtre parente.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Remarquez que dans ce cas, nous ne devons pas appeler ShowWindow pour faire apparaître la zone d'édition à l'écran, parce que nous incluons le style WS_VISIBLE. Vous pouvez aussi utiliser ce tour de passe passe pour la fenêtre parente.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;=====================================================</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Initialisation des membres de la structure OPENFILENAME.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>;=====================================================</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.lStructSize,SIZEOF ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hWndOwner</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFilter, OFFSET FilterString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFile, OFFSET buffer</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.nMaxFile,MAXSIZE</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après la création du contrôle d'édition, prenons le temps d'initialiser les membres d'ofn. Parce que nous souhaitons aussi réutiliser ofn pour la boîte de dialogue de sauvegarde, nous remplissons uniquement les membres *communs* employés par GetOpenFileName et GetSaveFileName.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La section WM_CREATE est un formidable endroit pour pouvoir faire vite fait l'initialisation.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_SIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edx,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr edx,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0ffffh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MoveWindow,hwndEdit,0,0,eax,edx,TRUE</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous recevons des messages WM_SIZE lorsque la taille du secteur client de notre fenêtre principale change. Nous recevons aussi ce message quand la fenêtre est créée en premier. Pour pouvoir recevoir ce message, les styles de classe de fenêtre doivent inclure les styles CS_VREDRAW et CS_HREDRAW. Nous profitons de cette occasion pour redimensionner notre contrôle d'édition à la taille du le secteur client de notre fenêtre parentale. D'abord nous devons connaître la largeur actuelle et la hauteur du secteur client de la fenêtre parente. Nous obtenons ces renseignements de lParam. Le mot de poids fort d'lParam contient la hauteur alors que le mot de poids faible d'lParam contient la largeur du secteur client. Nous employons alors ces deux informations pour redimentionner la zone d'édition en appelant la fonction MoveWindow. En plus du changement de la taille de la fenêtre, nous pouvons aussi changer sa position.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_OPEN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.Flags, OFN_FILEMUSTEXIST or \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_PATHMUSTEXIST or OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetOpenFileName, ADDR ofn</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand l'utilisateur choisit le sous-menu File/Open, nous remplaçons les Flags de la structure ofn et appelons la fonction GetOpenFileName pour afficher la boîte de dialogue qui sert à ouvrir des fichiers.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateFile,ADDR buffer,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+GENERIC_READ or GENERIC_WRITE ,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FILE_SHARE_READ or FILE_SHARE_WRITE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,OPEN_EXISTING,FILE_ATTRIBUTE_ARCHIVE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hFile,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après que l'utilisateur ait choisit un fichier pour l'ouvrir, nous appelons CreateFile pour ouvrir ce fichier. Nous indiquons à cette fonction qu'elle doit essayer d'ouvrir le fichier pour le lire ou bien écrire dedans. Après que le fichier soit ouvert, la fonction renvoie l'handle de ce fichier que nous stockons dans une variable Globale pour une future utilisation. Cette fonction a la syntaxe suivante :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CreateFile proto lpFileName:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwDesiredAccess:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwShareMode:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpSecurityAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwCreationDistribution:DWORD\,</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwFlagsAndAttributes:DWORD\,</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hTemplateFile:DWORD</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>dwDesiredAccess</b> spécifie quelle est l'opération que vous voulez exécuter sur le fichier.</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>0&nbsp;</b>
+Ouvre le fichier pour interroger ses attributs. Vous avez le droit de lire ou écrire les données.</font></font></font></li>
+
+<li>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>GENERIC_READ</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;
+Ouvre le fichier pour le lire.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>GENERIC_WRITE</b>&nbsp;
+Ouvre le fichier pour pouvoir écrire dedans.</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>dwShareMode</b> indique quelle opération, sur le fichier ouvert, vous voulez permettre à d'autres processus d'effectuer.</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>0</b>&nbsp;
+Empêche le partage du fichier avec d'autres processus.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_SHARE_READ</b> permet à d'autres processus de lire les données, du fichier qui est ouvert.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_SHARE_WRITE</b> permet à d'autres processus d'écrire des données dans le fichier qui est ouvert.</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>lpSecurityAttributes</b> n'a aucune signification sous Windows 95.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>dwCreationDistribution</b> indique que l'action CreateFile s'exécutera, que le fichier indiqué dans lpFileName existe ou non.</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>CREATE_NEW</b> Crée un nouveau fichier. La fonction échoue si le fichier indiqué existe déjà.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>CREATE_ALWAYS</b> Crée un nouveau fichier. La fonction recopie le fichier s'il existe.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>OPEN_EXISTING</b> Ouvre le fichier. La fonction échoue si le fichier n'existe pas.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>OPEN_ALWAYS</b> Ouvre le fichier, s'il existe. Si le fichier n'existe pas, la fonction crée le fichier comme si dwCreationDistribution était CREATE_NEW.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>TRUNCATE_EXISTING</b> Ouvre le fichier. Une fois ouvert, le fichier est tronqué(écourté) pour que sa taille finisse par des octets zéro (ex taille de 400 octets). Le processus d'appel doit ouvrir le fichier avec au moins l'accès GENERIC_WRITE. La fonction échoue si le fichier n'existe pas.</font></font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>dwFlagsAndAttributes indique les attribus du fichier</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_ARCHIVE</b> dit que le fichier est un fichier d'archives. Les applications emploient cet attribut pour marquer des fichiers pour des Backup(sauvegaurdes) ou des déplacements.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_COMPRESSED</b> indique que le fichier ou le dossier est comprimé. Pour un fichier, ça signifie que toutes les données dans le fichier sont comprimées. Pour un dossier, ça signifie que la compression est par défaut pour tous les fichiers et ses sous-répertoires nouvellement créés.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_NORMAL</b> indique que le fichier n'a aucun autre jeu d'attributs. Cet attribut est valable seulement s'il est employé seul.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_HIDDEN</b> indique que c'est un fichier caché. Il ne doit pas figurer dans une inscription de renseignements ordinaire.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_READONLY</b> le fichier ne peut être qu'uniquement lu. Les applications peuvent lire le fichier, mais ne peuvent pas y écrire ni le supprimer.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><b>FILE_ATTRIBUTE_SYSTEM</b> le fichier fait parti ou bien est exclusivement employé par le système d'exploitation. c'est donc un fichier 'system'.</font></font></font></li>
+</ul>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalAlloc,GMEM_MOVEABLE or GMEM_ZEROINIT,MEMSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; hMemory,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalLock,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; pMemory,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand le fichier est ouvert, nous allouons(réservons) un bloc de mémoire pour l'utiliser par les fonctions WriteFile ou ReadFile. Nous spécifions le flag GMEM_MOVEABLE pour que ce soit Windows qui s'occupe de déplacer le bloc de mémoire dans le but de consolider la mémoire (défragmentation locale). Le flag GMEM_ZEROINIT dit à GlobalAlloc de remplir le bloc de mémoire nouvellement réservé avec des zéros.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand les retours de GlobalAlloc sont menés avec succès, eax contiennent l'handle du bloc de mémoire alloué. Nous passons cet handle à la fonction GlobalLock qui renvoie ensuite le pointer au bloc de mémoire.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReadFile,hFile,pMemory,MEMSIZE-1,ADDR SizeReadWrite,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,WM_SETTEXT,NULL,pMemory</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand le bloc de mémoire est prêt pour l'utilisation, nous appelons la fonction ReadFile pour lire les données du fichier. Quand un fichier est d'abord ouvert ou créé, le fichier n'est pas. Ainsi dans ce cas, nous commençons à lire le premier octet dans le fichier. Le premier paramètre de ReadFile est l'handle du fichier à lire, le deuxième est le pointer du bloc de mémoire qui content les données, ensuite c'est le nombre d'octets à lire dans le fichier, le quatrième paramètre est l'adresse de la variable (de taille DWORD) qui contiendra le nombre d'octets réellement lus dans le fichier.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après que nous ayons remplis le bloc de mémoire des données, nous transvasons ces données vers le contrôle d'édition (la zone de saisie) en envoyant le message WM_SETTEXT au contrôle d'édition, avec lParam qui contient le pointer du bloc de mémoire. Après cet appel, le contrôle d'édition affiche les données dans son secteur client.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,hFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalUnlock,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GlobalFree,hMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>À ce point, nous n'avons aucun besoin de maintenir le fichier ouvert plus longtemps puisque notre but est d'écrire dans un autre fichier (que le fichier original)les données visibles dans contrôle d'édition. Donc nous fermons le fichier en appelant CloseHandle avec l'Handle du fichier comme son paramètre. Ensuite nous ouvrons le bloc de mémoire et le libérons. En réalité vous ne devez pas libérer la mémoire dès maintenant, vous pourrez réutiliser plus tard le bloc de mémoire pendant l'opération de sauvegarde. Mais dans le but de notre démonstration, je tiens à la libérer ici.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetFocus,hwndEdit</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand la DialogBox (qui sert à ouvrir des fichiers) s'affiche à l'écran, le centre d'entrée passe de la fenêtre principale à la DialogBox en question pour que ce soit elle qui soit active. Ainsi quand on referme un fichier de la DialogBox (déjà ouvert), nous devons rendre le centre d'entrée à la zone de saisie (au contrôle d'édition), qui se trouve en arrière.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ceci fini l'opération de lecture sur le fichier. À ce point, l'utilisateur peut écrire sur le contrôle d'édition. Et quand il veut sauvegarder les données dans un autre fichier, il doit choisir le sous-menu File/Save qui affiche une  DialogBox pour les sauvegardes. La création de la boîte de dialogue de sauvegarde n'est pas très différente de la boîte de dialogue d'ouverture de fichiers. En fait, elles diffèrent seulement entre le nom des fonctions, GetOpenFileName et GetSaveFileName. Vous pouvez aussi réutiliser la plupart des membres de la structure ofn, sauf le membre Flag.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.Flags,OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans notre cas, nous voulons créer un nouveau fichier, donc OFN_FILEMUSTEXIST et OFN_PATHMUSTEXIST doivent être omis sinon la boîte de dialogue ne nous laissera pas créer un fichier qui n'existe pas déjà.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le paramètre dwCreationDistribution de la fonction CreateFile doit être changé en <b>CREATE_NEW</b> puisque nous voulons créer un nouveau fichier.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le reste du code est identique à celui dans la partie 'fichiers à ouvrir' sauf la chose suivante :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndEdit,WM_GETTEXT,MEMSIZE-1,pMemory</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke WriteFile,hFile,pMemory,eax,ADDR SizeReadWrite,NULL</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous envoyons le message WM_GETTEXT au contrôle d'édition pour celui-ci recopier les données (le texte)  qu'il contient dans le bloc de mémoire que nous avions alloués, la valeur de retour dans eax est la longueur des données à l'intérieur du buffer. Après que les données soient dans le bloc de mémoire, nous les écrivons dans un nouveau fichier.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

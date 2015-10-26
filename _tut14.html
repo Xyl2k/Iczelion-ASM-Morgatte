@@ -1,0 +1,369 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 14: Process</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 14: Process</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous allons voir ce qu'est un process et comment faire pour le créer et le terminer.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez l'exemple <a href="files/tut14.zip">ici</a>. Attention en fait cet exemple est dans un *.ZIP et il ne marchera pas si vous le laissez dedans, donc dézipez-le.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Préliminaire:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Qu'est ce qu'un 'process' ? Je cite cette définition de la référence Win32 API:</font></font></font>
+<blockquote><i><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>"Un 'process' est une application (un programme) qui sert à exécuter un autre programme. C'est un espace d'adresses virtuel privé, de code, de données et d'autres ressources du système d'exploitation, comme les fichiers, ou la synchronisation d'objets qui sont visibles pour le process.."</font></font></font></i></blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Comme vous pouvez le voir dans la définition ci-dessus, process "possède" plusieurs objets : l'espace d'adresse, le(s) module(s) (les autres programmes)  à exécuter et tout ce que ces programmes créent ou ouvrent. Au minimum, process doit consister en l'exécution d'un seul module, avec un espace d'adresse privé et un lien. Chaque process doit avoir au moins un lien. Qu'est ce qu'un lien ? Un lien est en réalité une suite d'instructions d'exécution en attente. Lorsque Windows crée d'abord un process, il crée seulement un lien de process. D'habitude, ce lien fait en sorte d'exécuter la première instruction dans le module (dans le programme ciblé). Si le process à besoins de plusieurs autres liens par la suite, il peut les créer.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand Windows reçoit une commande pour créer un process, il alloue un espace d'adresses mémoire privé et ensuite il Mappe (recopie) le fichier exécutable dans cet espace. Après cela il crée le premier lien du process.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Sous Win32, vous pouvez aussi créer des process de vos propres programmes en appelant la fonction CreateProcess. CreateProcess a la syntaxe suivante :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>CreateProcess
+proto lpApplicationName:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpCommandLine:DWORD,\<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpProcessAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpThreadAttributes:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+bInheritHandles:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dwCreationFlags:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpEnvironment:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpCurrentDirectory:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpStartupInfo:DWORD,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+lpProcessInformation:DWORD</font></font></font></b>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ne soyez pas effrayez par le nombre de paramètres. Nous pouvons ignorer la plupart d'entre eux.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpApplicationName</B></FONT>  est le nom du fichier exécutable avec ou sans nom de chemin que vous voulez exécuter. Si ce paramètre est nul, vous devez mettre le nom du fichier exécutable dans le paramètre lpCommandLine.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpCommandLine</B></FONT> sont les arguments de la ligne de commande du programme que vous voulez exécuter. Notez que  si lpApplicationName est NUL, ce paramètre doit en plus contenir le nom du fichier exécutable. Comme cela : "notepad.exe readme.txt". (LpCommandLine c'est aussi l'argument qu'on écrit dans W32Dasm quand on fait 'DebugàLoad Process [argument]àLoad' , mais c'est très rare qu'on écrive quelque chose en tant qu'argument!) </font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpProcessAttributes</B></FONT> et lpthreadAttributes Spécifient les attributs de sécurité pour process et le lien primaire. S'ils sont NULS, les attributs de sécurité par défaut sont employés.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>BInheritHandles</B></FONT> est un flag qui indique si vous voulez qu'un autre process hérite du contrôle de toutes les manipulations ouvertes par votre process.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>DwCreationFlags</B></FONT> représente Plusieurs flags qui déterminent le comportement du process que vous voulez créé, comme : voulez-vous qu'un process soit créés, mais suspendu immédiatement pour que vous puissiez l'examiner ou le modifier avant qu'il ne reparte ? Vous pouvez aussi spécifier la classe de priorité du lien(s) dans un nouveau process. Cette classe de priorité est employée pour déterminer la priorité de planification des liens du process. Normalement nous employons le flag NORMAL_PRIORITY_CLASS.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpEnvironment</B></FONT> est le pointer du bloc d'environnement qui contient plusieurs instructions pour un nouveau process. Si ce paramètre est NUL, le nouveau process hérite de l'environnement du bloc process précédent.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpCurrentDirectory</B></FONT> est le pointer qui est sur la chaîne de caractères lequel indique l'actuel 'Lecteur ' (Drive) ainsi que le répertoire (Directory) du Child Process. Il est NULL si vous voulez que le 'Child Process' succède au 'Parent Process'.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpStartupInfo</B></FONT> pointe sur une structure STARTUPINFO laquelle dit comment doit apparaître la fenêtre principale du nouveau process. La structure STARTUPINFO contient beaucoup de membres servants à définir l'affichage de la fenêtre principale du 'Child Process'. Si vous ne voulez rien de spécial, vous pouvez remplir la structure STARTUPINFO avec les valeurs du 'Parent Process' en appelant la fonction GetStartupInfo.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1><FONT COLOR="#66FFCC"><B>LpProcessInformation</B></FONT> pointe sur la structure PROCESS_INFORMATION laquelle reçoit l'information d'identification du nouveau process. La structure de PROCESS_INFORMATION  est la suivante :</font></font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>PROCESS_INFORMATION
+STRUCT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;
+hProcess&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HANDLE ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font>; Handle du 'Child Process'</b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;
+hThread&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+HANDLE ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font>; Handle du premier lien du 'Child Process'</b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;
+dwProcessId&nbsp;&nbsp;&nbsp;&nbsp; DWORD ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font>; ID du 'Child Process'</b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>&nbsp;&nbsp;&nbsp;
+dwThreadId&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font>; ID du premier lien du 'Child Process'</b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>PROCESS_INFORMATION
+ENDS</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>L'handle du process et l'ID du process sont deux choses différentes. L'ID est un identificateur unique du process dans le système. L'handle est une valeur renvoyée par Windows pour qu'on puisse l'utiliser avec d'autres process rapportés de fonctions API. L'handle  du process ne peut pas être employé pour identifier un process puisque il n'est pas unique.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après l'appel à CreateProcess, un nouveau process est créé et on retourne (au prog principa) immédiatement après cet appel à CreateProcess. Vous pouvez vérifier si le nouveau process est toujours actif en appelant la fonction GetExitCodeProcess qui a la syntaxe suivante :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>GetExitCodeProcess
+proto hProcess:DWORD, lpExitCode:DWORD</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Si cet appel est couronné de succès, lpExitCode contient le statut de terminaison du process en question. Si la valeur dans lpExitCode est égale à <b>STILL_ACTIVE</b>, alors ce process est toujours en cours.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez force le process à se terminer en appelant la fonction TerminateProcess. Voici sa syntaxe :</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#FFFF00"><font size=-1>TerminateProcess
+proto hProcess:DWORD, uExitCode:DWORD</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez spécifier le code de sortie désiré pour votre process, n'importe quelle valeur que vous souhaitez. TerminateProcess n'est pas une façon très propre de terminaison d'un process puisque chaque dll rattaché à ce process ne sera pas informé que le process a été fermé.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Exemple:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>L'exemple suivant crée un nouveau process lorsque l'utilisateur choisit le sous-menu (le menu item) "Create Process". Il essayera d'exécuter "msgbox.exe". Si l'utilisateur souhaite terminer le nouveau process, il peut choisir le menu item "Terminate Process". Le programme vérifiera d'abord si le nouveau process est déjà fermé, si ce n'est pas le cas, le programme appellera la fonction TerminateProcess pour détruire le nouveau process.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_CREATE_PROCESS equ 1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_TERMINATE equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT equ 3</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName db "Win32ASMProcessClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName db "Win32 ASM Process Example",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName db "FirstMenu",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>processInfo PROCESS_INFORMATION &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>programname db "msgbox.exe",0</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hMenu HANDLE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ExitCode DWORD ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Contient le statut 'exitcode  du process' servant à l'appel de GetExitCodeProcess.</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetCommandLine</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov CommandLine,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,300,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetMenu,hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp; hMenu,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL startInfo:STARTUPINFO</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_INITMENUPOPUP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetExitCodeProcess,processInfo.hProcess,ADDR ExitCode</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ExitCode==STILL_ACTIVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam==0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_CREATE_PROCESS</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if processInfo.hProcess!=0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hProcess</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov processInfo.hProcess,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStartupInfo,ADDR startInfo</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateProcess,ADDR programname,NULL,NULL,NULL,FALSE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NORMAL_PRIORITY_CLASS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,NULL,ADDR startInfo,ADDR processInfo</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hThread</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif ax==IDM_TERMINATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetExitCodeProcess,processInfo.hProcess,ADDR ExitCode</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ExitCode==STILL_ACTIVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TerminateProcess,processInfo.hProcess,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hProcess</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov processInfo.hProcess,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>end start</font></font></font></b>
+<h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Analyse:</font></font></font></b></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ce programme crée la fenêtre principale et renvoie l'handle de son menu pour une future utilisation. Il attend alors que l'utilisateur choisisse une commande du menu. Lorsque l'utilisateur choisit le sous-menu "Process" du menu principal (de la barre de menu), nous déployons le menu grâce au message WM_INITMENUPOPUP pour modifier les sous-menus à l'intérieur du 'menu popup' (menu principal) avant qu'il ne soit affichés.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_INITMENUPOPUP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetExitCodeProcess,processInfo.hProcess,ADDR ExitCode</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ExitCode==STILL_ACTIVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_CREATE_PROCESS,MF_ENABLED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EnableMenuItem,hMenu,IDM_TERMINATE,MF_GRAYED</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Pourquoi utilisons-nous ce message dans notre process? Parce que nous souhaitons préparer les sous-menus dans le menu popup avant que l'utilisateur ne puisse les voir. Dans notre exemple, lorsque le process n'est pas encore lancé, nous activons le sous-menu "Start Process" et désactivons "Terminate Process" (il est grisé). On fait le contraire quand le nouveau process est déjà actif.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous  vérifions d'abord si le nouveau process dirige (a encore la main sur MsgBox.exe) toujours en appelant la fonction GetExitCodeProcess avec l'handle du process qui a été renvoyé par la fonction CreateProcess. Si les retours de GetExitCodeProcess sont FALSE(FAUX), alos ça signifie que notre process n'est pas encore commencé, donc nous grisons (désactivons) le sous-menu  "Terminate Process". Si les retours de GetExitCodeProcess sont TRUE(VRAIS), nous savons que notre nouveau process a été lancé, mais nous devons vérifier plus loin s'il est toujours en court. Donc nous comparons la valeur dans ExitCode à la valeur <b>STILL_ACTIVE</b>. S'ils sont égaux,c'est que notre process en encore en court : nous devons alors désactiver la sous-menu "Start Process" puisque nous ne souhaitons pas lancer plusieurs processus en même temps.</font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_CREATE_PROCESS</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if processInfo.hProcess!=0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hProcess</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov processInfo.hProcess,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetStartupInfo,ADDR startInfo</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateProcess,ADDR programname,NULL,NULL,NULL,FALSE,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NORMAL_PRIORITY_CLASS,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NULL,NULL,ADDR startInfo,ADDR processInfo</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hThread</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand l'utilisateur choisit le menu item "Start Process", nous vérifions d'abord si le membre hProcess de la structure PROCESS_INFORMATION est déjà fermé. Si c'est la première fois, la valeur d'hProcess sera toujours zéro puisque nous définissons la structure de PROCESS_INFORMATION dans la section '.data'. Si la valeur du membre hProcess n'est pas 0, ça signifie que le Child Process est sorti mais nous n'avons pas fermé son handle process encore. Donc c'est maintenant qu'il le faire.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous appelons la fonction GetStartupInfo pour récupérer la valeur startupinfo pour pouvoir ensuite  la passer à la fonction CreateProcess. Après ça nous appelons la fonction CreateProcess pour commencer nouveau process. Notez que je n'ai pas vérifié la valeur de retour de CreateProcess parce que ça aurait encore compliqué cet exemple. En réalité, vous devriez vérifier cette valeur de retour (de CreateProcess). Immédiatement après CreateProcess, nous fermons l'handle du premier lien, lequel est renvoyé par la structure processInfo. La fermeture du handle ne veut pas dire que est le lien terminé, mais seulement que nous ne voulons pas employer cet handle pour nous référer au lien de notre programme. Si nous ne le fermons pas, il provoquera une fuite des ressources.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.elseif ax==IDM_TERMINATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetExitCodeProcess,processInfo.hProcess,ADDR ExitCode</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ExitCode==STILL_ACTIVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TerminateProcess,processInfo.hProcess,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CloseHandle,processInfo.hProcess</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov processInfo.hProcess,0</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Quand l'utilisateur choisit le sous-menu (le menu item) "Terminate Process", nous vérifions si le nouveau process est toujours actif en appelant la fonction GetExitCodeProcess. Si il est toujours actif, nous appelons la fonction TerminateProcess pour détruire notre process. Aussi nous fermons l'handle du Child Process puisque désormais nous n'en avons plus besoin.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

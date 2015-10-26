@@ -1,0 +1,168 @@
+<html>
+<head>
+<title>Iczelion's Win32 Assembly Tutorial 30: Win32 Debug API part 3</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body STYLE="#text-align:justify;" bgcolor="#000000" text="#FFFFFF" link="#FFFFCC" vlink="#FFCCCC" alink="#CCFFCC">
+<h1 align="center"><font face="Arial, Helvetica, sans-serif" color="#FFFFCC">Tutorial 30: Win32 Debug API partie 3/3</font></h1>
+<p><font face="MS Sans Serif" size="-1">Dans ce tutorial, nous allons continuer l'exploration de debug win32 api. Et spécialement, nous allons voir comment tracer le debuggee.<br>
+  Downloadez <b><a href="files/tut30.zip" style="text-decoration:none">l'exemple</a></b>.</font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Théorie:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Si vous avez déjà utilisé un débugger auparavant, vous êtes familiers avec le fait de tracer un autre programme grâce à lui. Quand vous &quot;tracez&quot; un programme, les Break Points sur n'importe quelle instruction, vous donne la chance d'examiner les valeurs des Registres et des mémoires. Le fait de tracer un programme, on appelle ça officiellement 'Single-stepping'.<br>
+Plus concrètement, tracer un programme c'est exécuter une ligne d'instruction du programme cible puis voir ce que ça produit,( ou bien regarder les valeurs des Registres ou des mémoires qui viennent de changer) puis passer à la ligne suivante et encore voir ce qu'elle fait et ainsi de suite pour comprendre comment fonctionne le programme. Seul un debugger est capable de faire ça.<BR>
+Le traçage (ou 'Single-stepping') a la particularité d'être générer pas le CPU lui-même. (Le CPU c'est l'organe de calcul de l'ordinateur, son coeur). Le 8ème bit du flag 'REGISTER' est appelé le <font color="#FFFFCC"><b>Trap Flag</b></font>. Si ce flag est mis à 1, le CPU fonctionne en mode pas à pas ou traçage, c'est pareil, enfin bon en 'Single-stepping'. Le CPU produira une exception de debug pour le stopper après chaque instruction. Après que l'exception de debug soit produite, le 'Trap Flag' est automatiquement purifié.
+<br>
+  Nous pouvons aussi tracer le debuggee, en employant les API win32 debug. Les étapes sont les suivantes :</font></p>
+<ol>
+  <li><font face="MS Sans Serif" size="-1">Call <b><font color="#FFFFCC">GetThreadContext</font></b>, 
+    specifying <font color="#CCFFCC"><b>CONTEXT_CONTROL</b></font> in<font color="#FF9900"><b> 
+    ContextFlags</b></font>, to obtain the value of the flag register.</font></li>
+  <li><font face="MS Sans Serif" size="-1">Mettez le Trap Bit dans le membre <font color="#FFCCCC"><b>regFlag</b></font> de la structure <font color="#CCCCFF"><b>CONTEXT</b></font></font>.</li>
+  <li><font face="MS Sans Serif" size="-1">Appellez <font color="#FFFFCC"><b>SetThreadContext</b></font></font></li>
+  <li><font face="MS Sans Serif" size="-1">Comme d'habitude, attendez qu'un événement de debug se produise. Le debuggee s'exécutera en mode single-step. Après qu'il exécute chaque instruction, nous obtiendrons l'événement suivant : <font color="#CCFFCC"><b>EXCEPTION_DEBUG_EVENT</b></font>, et avec la valeur <font color="#CCCCFF "><b>EXCEPTION_SINGLE_step</b></font> dans <font color="#CCFFCC"><b>u.Exception.pExceptionRecord.ExceptionCode nous pourrons tracer pas à pas.</b></font></font></li>
+  <li><font face="MS Sans Serif" size="-1">Si vous avez besoin de tracer (donc d'arrêter) l'instruction suivante, vous avez besoin de remettre le trap bit de nouveau.</font></li>
+</ol>
+<h3><font face="Arial, Helvetica, sans-serif">Exemple:</font></h3>
+<p><font face="Fixedsys">.386<br>
+  .model flat,stdcall <br>
+  option casemap:none <br>
+  include \masm32\include\windows.inc <br>
+  include \masm32\include\kernel32.inc <br>
+  include \masm32\include\comdlg32.inc <br>
+  include \masm32\include\user32.inc <br>
+  includelib \masm32\lib\kernel32.lib <br>
+  includelib \masm32\lib\comdlg32.lib <br>
+  includelib \masm32\lib\user32.lib <br>
+  <br>
+  .data <br>
+  AppName db "Win32 Debug Example no.4",0 <br>
+  ofn OPENFILENAME <> <br>
+  FilterString db "Executable Files",0,"*.exe",0 <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; db 
+  "All Files",0,"*.*",0,0 <br>
+  ExitProc db "The debuggee exits",0Dh,0Ah <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;db "Total Instructions executed 
+  : %lu",0 <br>
+  TotalInstruction dd 0<br>
+  <br>
+  .data? <br>
+  buffer db 512 dup(?) <br>
+  startinfo STARTUPINFO <> <br>
+  pi PROCESS_INFORMATION <> <br>
+  DBEvent DEBUG_EVENT <> <br>
+  context CONTEXT <> <br>
+  <br>
+  .code <br>
+  start: <br>
+  mov ofn.lStructSize,SIZEOF ofn <br>
+  mov ofn.lpstrFilter, OFFSET FilterString <br>
+  mov ofn.lpstrFile, OFFSET buffer <br>
+  mov ofn.nMaxFile,512 <br>
+  mov ofn.Flags, OFN_FILEMUSTEXIST or OFN_PATHMUSTEXIST or OFN_LONGNAMES or OFN_EXPLORER 
+  or OFN_HIDEREADONLY <br>
+  invoke GetOpenFileName, ADDR ofn <br>
+  .if eax==TRUE <br>
+  &nbsp;&nbsp;&nbsp; invoke GetStartupInfo,addr startinfo <br>
+  &nbsp;&nbsp;&nbsp; invoke CreateProcess, addr buffer, NULL, NULL, NULL, FALSE, 
+  DEBUG_PROCESS+ DEBUG_ONLY_THIS_PROCESS, NULL, NULL, addr startinfo, addr pi 
+  <br>
+  &nbsp;&nbsp;&nbsp; .while TRUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke WaitForDebugEvent, addr DBEvent, 
+  INFINITE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .if DBEvent.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke wsprintf, addr 
+  buffer, addr ExitProc, TotalInstruction <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke MessageBox, 0, 
+  addr buffer, addr AppName, MB_OK+MB_ICONINFORMATION <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .break <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXCEPTION_DEBUG_EVENT 
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.if DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mov 
+  context.ContextFlags, CONTEXT_CONTROL <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  GetThreadContext, pi.hThread, addr context <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or 
+  context.regFlag,100h <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  SetThreadContext,pi.hThread, addr context <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ContinueDebugEvent, DBEvent.dwProcessId, DBEvent.dwThreadId, DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .continue 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_SINGLE_STEP 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc 
+  TotalInstruction <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  GetThreadContext,pi.hThread,addr context or context.regFlag,100h <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  SetThreadContext,pi.hThread, addr context <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ContinueDebugEvent, DBEvent.dwProcessId, DBEvent.dwThreadId,DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .continue 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .endif <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke ContinueDebugEvent, DBEvent.dwProcessId, 
+  DBEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED <br>
+  &nbsp;&nbsp;&nbsp; .endw <br>
+  .endif <br>
+  invoke CloseHandle,pi.hProcess <br>
+  invoke CloseHandle,pi.hThread <br>
+  invoke ExitProcess, 0 <br>
+  end start </font></p>
+<h3><font face="Arial, Helvetica, sans-serif">Analyse:</font></h3>
+<p><font face="MS Sans Serif" size="-1">Ce programme ouvre une boîte de dialogue openfile. Quand l'utilisateur choisit un fichier exécutable, il exécute le programme cible en mode single-step (tracage pas à pas), et il compte le numéro d'instructions exécutées jusqu'à la sortie de ce programme cible.
+  </font></p>
+<p><font face="Fixedsys">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .elseif DBEvent.dwDebugEventCode==EXCEPTION_DEBUG_EVENT 
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.if DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous en profitons pour faire fonctionner le programme cible en mode single-step. Souvenez-vous que Windows envoie un EXCEPTION_BREAKPOINT juste avant qu'il n'exécute la première instruction du prog cible.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  mov context.ContextFlags, CONTEXT_CONTROL <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  GetThreadContext, pi.hThread, addr context </font></p>
+<p><font face="MS Sans Serif" size="-1">On appelle <font color="#FFFFCC"><b>GetThreadContext</b></font> 
+  pour remplir la structure <font color="#CCFFCC"><b>CONTEXT</b></font> avec les valeurs actuelles des Registres du debuggee. Plus spécifiquement, nous avons besoin de la valeur actuelle du flag REGISTER.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  or context.regFlag,100h </font></p>
+<p><font face="MS Sans Serif" size="-1">Nous mettons le trap bit (le 8ème bit) dans l'image du flag REGISTER.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  invoke SetThreadContext,pi.hThread, addr context <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ContinueDebugEvent, DBEvent.dwProcessId, DBEvent.dwThreadId, DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .continue 
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Then we call <font color="#FFFFCC"><b>SetThreadContext</b></font> 
+  to overwrite the values in the <font color="#CCFFCC"><b>CONTEXT</b></font> structure 
+  with the new one(s) and call <font color="#FFFFCC"><b>ContinueDebugEvent </b></font>with 
+  <font color="#CCFFCC"> <b>DBG_CONTINUE</b></font> flag to resume the debuggee.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  .elseif DBEvent.u.Exception.pExceptionRecord.ExceptionCode==EXCEPTION_SINGLE_STEP 
+  <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; inc 
+  TotalInstruction </font></p>
+<p><font face="MS Sans Serif" size="-1">Quand une instruction est exécutée dans le debuggee, nous recevons un <font color="#CCFFCC"><b>EXCEPTION_DEBUG_EVENT</b></font>. 
+  Nous devons examiner la valeur de <b><font color="#FFCCCC">u.Exception.pExceptionRecord.ExceptionCode</font></b>. 
+  Si la valeur est <font color="#CCFFCC"><b>EXCEPTION_SINGLE_step</b></font>, alors cet événement de debug s'est produit à cause du mode Pas à Pas (single-step). Dans ce cas, nous pouvons incrémenter la variable <font color="#FFFFCC"><b>TotalInstruction</b></font> 
+  car nous savons qu'une seule et unique instruction vient d'être exécutée dans le programme cible.</font></p>
+<p><font face="Fixedsys"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  invoke GetThreadContext,pi.hThread,addr context or context.regFlag,100h <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  SetThreadContext,pi.hThread, addr context <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; invoke 
+  ContinueDebugEvent, DBEvent.dwProcessId, DBEvent.dwThreadId,DBG_CONTINUE <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .continue 
+  <br>
+  </font></p>
+<p><font face="MS Sans Serif" size="-1">Après que l'exception de debug soit arrivée on enlève (on purifie) le 'trap flag'. On doit remettre le trap flag de nouveau si on souhaite continuer en mode Pas à Pas (single-step).</font><br>
+  <font face="MS Sans Serif" size="-1"><b><font color="#FF3333">Avertissement : n'employez pas l'exemple dans ce tutorial avec un grand programme : le traçage est LENT. Il vous faudrait attendre pendant dix minutes avant que vous ne puissiez fermer le debuggee.</font></b></font></p>
+<hr>
+<p align="center"><b><font face="MS Sans Serif" size="-1">[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</font></b></p>
+<p>&nbsp;</p>
+<DIV ALIGN="right">Taduit par Morgatte</DIV>
+</body>
+</html>

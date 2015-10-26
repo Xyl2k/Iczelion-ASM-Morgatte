@@ -1,0 +1,557 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="lancelot">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 24: Windows Hooks</title>
+</head>
+<body STYLE="#text-align:justify;" text="#C0C0C0" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 24: Windows Hooks<BR><FONT SIZE=-1>(Hook=Crochet)</FONT></font></font></h1></center>
+<font face="Arial,Helvetica"><font size=-1>Nous allons  voir ce que sont les Windows Hooks dans ce Tutorial. Les Windows Hooks sont très puissants. Grâce à eux, vous pouvez fouiner à l'intérieur d'autres processus (programmes) et quelques fois changer leurs comportements.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Downloadez l'exemple <a href="files/tut24.zip">ici</a>.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CC6600">Théorie:</font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Les Windows Hooks peuvent être considérés comme une des particularités les plus puissantes de Windows. Avec elles, vous pourrez prendre au piège les événements qui se produisent dans votre propre process ou bien dans d'autres processus. (exemple vous verrez apparaître dans votre fenêtre le n° qui sert d'handle à un bouton ou à une boîte se saisie…ça sert à ça un Hook). En "accrochant" (en Hookant), vous informez Windows sur les caractéristiques de la fonction Hookée. Notre fonction de filtre est aussi appelée la procédure d'hook, laquelle sera appelée à chaque fois qu'un événement intéressant se produit. Il y en a deux types en fait : les Hooks locaux et éloignés.</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">Les Hooks locaux <font> prennent au piège les événements qui sont en train de se passer dans votre propre process.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#D9D900">Les Hooks éloignés <font>prennent au piège les événements qui sont en train de se passer dans d'autres process. Il y a deux types d'Hooks éloignés.</font></font></li>
+
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">thread-specific<font> (ou lien-spécifique) prend au piège les événements qui se passent dans un lien spécifique dans d'autres process. Bref, il vous sert à observer des événements d'un lien spécifique à l'intérieur d'un process spécifique.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">system-wide<font> (système-large) prend au piège tous les événements destinés à tous les liens dans tous les processus dans le système.</font></font></li>
+</ul>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>Quand vous mettez en place des Hooks, rappelez-vous qu'ils ont une influence sur les performances du système. Les 'System-Wide Hooks' sont tristement célèbres. Puisque TOUS les événements de liens seront mis en déroute par votre fonction de filtre (votre procédure d'Hooks), votre système peut être relativement ralentir. Ainsi si vous employez un 'System-Wide Hook', vous devez l'utiliser judicieusement et non pas l'accrocher aussitôt même si vous n'en avez pas encore besoin. Donc, vous avez de grandes chances de faire planter les autres processus puisque vous pouvez toucher au fonctionnement d'autres processus et si il y a quelque chose d'incorrecte dans votre fonction de filtre, il se peut que les autres programmes restent en attente. Souvenez-vous en : 'le pouvoir vient de paire avec la responsabilité'.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Vous devez vraiment comprendre le fonctionnement d'un hook avant que vous ne puissiez l'employer efficacement. Quand vous créez un hook, Windows crée une structure de données dans la mémoire, contenant l'information  sur le hook et l'ajoute à une liste liée de Hooks existant. Le nouvel hook est ajouté devant les vieux Hooks. Lorsqu'un événement arrive, si vous faites appel à un hook local, la fonction de filtre de votre programme sera appelée, donc c'est plus direct. Mais si c'est un hook éloigné, le système doit injecter le code pour la procédure d'hook dans l'espace d'adresse d'un autre process. Et le système peut faire ça uniquement si la fonction se trouve dans un DLL. Ainsi, si vous voulez employer un hook éloigné, votre procédure d'hook doit résider dans un DLL. Il y a deux exceptions à cette règle: l'écriture d'un journal et la lecture d'un journal d'Hooks. Les procédures d'hook pour ce deux Hooks doivent résider dans le lien qui mettent en place les Hooks. La raison pourquoi çà doit être ainsi c'est que : les deux Hooks fonctionnent avec des interceptions de bas niveau d'événements d'entrée matériel. Les événements d'entrée doivent être (recorded/playbacked) enregistrés/lus dans l'ordre où ils sont apparus. Si le code de ces deux Hooks sont dans un DLL, les événements d'entrée peuvent se disperser parmi plusieurs liens et il est impossible de connaître leur ordre les uns par rapport aux autres. Donc la solution c'est que : la procédure d'hook de ce deux Hooks doit être dans un lien simple seulement c'est-à-dire le lien qui installe les Hooks.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Il y a 14 types d'Hooks :</font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_CALLWNDPROC</font></b> est appelé quand SendMessage est appelé</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_CALLWNDPROCRET</font></b> est appelé lors du retours de SendMessage.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_GETMESSAGE</font></b> est appelé quand GetMessage ou PeekMessage sont appelés</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_KEYBOARD</font></b> est appelé quand GetMessage ou PeekMessage récupèrent le message WM_KEYUP ou WM_KEYDOWN dans la file d'attente (des messages).</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_MOUSE</font></b> est appelé quand GetMessage ou PeekMessage récupère un message provenant de la souris dans la file d'attente des messages.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_HARDWARE</font></b> est appelé quand GetMessage ou PeekMessage récupère certains messages en provenance de votre matériel, mais qui n'ont pas de rapport avec le clavier ou la souris.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_MSGFILTER</font></b> est appelé pour une DialogBox, quand son menu ou un scrollbar est sur le point de traiter un message. Cet hook est local. Il a été spécifiquement conçu pour des objets qui ont leurs propres boucles de message internes.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_SYSMSGFILTER</font></b> c'est la même chose que pour WH_MSGFILTER mais pour un système-large (system-wide).
+</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_JOURNALRECORD</font></b> est appelé quand Windows récupère le message dans la file d'attente d'une entrée matériel.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_JOURNALPLAYBACK</font></b> est appelé quand un événement est requit dans la file d'attente d'entrée matériel du système.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_SHELL</font></b> est appelé quand quelque chose d'intéressant provenant du Sell arrive, comme quand la barre de tâche a besoin de rafraîchir (redessiner) ses boutons.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_CBT</font></b> est spécialement employé pour la formation assistée par ordinateur. (CBT)</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_FOREGROUNDIDLE</font></b> est employé intérieurement par Windows. C'est vraiment très peu utilisé pour applications générales.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><b><font color="#999900">WH_DEBUG</font></b> est employé pour 'debugger' la procédure se faisant Hooker.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>Maintenant que nous avons pris connaissance de la théorie, nous pouvons nous concentrer sur le fait de savoir comment installer/désinstaller des Hooks.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Pour installer un hook, on appelle la fonction SetWindowsHookEx qui a la syntaxe suivante :</font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#009900"><font size=-1>SetWindowsHookEx proto HookType:DWORD, pHookProc:DWORD, hInstance:DWORD, ThreadID:DWORD</font></font></font></b>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">HookType</font>
+est une des valeurs inscrites ci-dessus, par exemple,<b><font color="#999900">WH_MOUSE</font></b>,
+<b><font color="#999900">WH_KEYBOARD</font></b></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">pHookProc</font> est l'adresse de la procédure d'hook qui sera appelée pour traiter les messages du hook spécifié. Si c'est un hook éloigné, il doit résider dans un DLL. Si ce n'est pas le cas, il doit appartenir à votre prog.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hInstance</font> est l'instance handle du DLL dans lequel la procédure d'hook réside. Si le hook est local, cette valeur doit être NULL.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">ThreadID</font> est l'ID du lien sur lequel vous aimeriez installer votre hook pour l'espionner. C'est ce paramètre qui détermine si le hook est local ou éloigné. Si ce paramètre est NULL, Windows interprétera votre hook comme un hook système-large éloigné qui s'attaque à tous les liens, dans le système. Si vous spécifiez l'ID d'un lien de votre propre processus (programme), cet hook est local. Si vous spécifiez l'ID d'un autre processus, votre hook est un lien-spécifique éloigné. Il y a deux exceptions à cette règle :<b><font color="#999900">WH_JOURNALRECORD</font></b> 
+et <b><font color="#999900">WH_JOURNALPLAYBACK</font></b> sont toujours des 'system-wide hooks' locaux (système-large), lequels n'ont pas besoin d'être dans un DLL. Et <b><font color="#999900">WH_SYSMSGFILTER</font></b> est toujours un 'system-wide hook' éloigné. En réalité il est identique au hook<b><font color="#999900">WH_MSGFILTER</font></b> avec ThreadID=0 (avec pour ID du lien une valeur NULL).</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>si l'appel est couronné de succès, il renvoie l'handle du hook dans eax. Si c'est pas le cas, un NULL est renvoyé dans eax. Vous devez sauvegarder l'handle du hook pouvoir 'déhooker' plus tard.</font></font></blockquote>
+<font face="Arial,Helvetica"><font size=-1>Vous pouvez désinstaller votre hook en appelant <b><font color="#009900">UnhookWindowsHookEx</font></b> lequel accepte qu'un seul paramètre, l'handle du hook que vous voulez désinstaller. Si l'appel réussit, il renvoie une valeur non-nulle dans eax. Sinon, il renvoie le NULL (forcément).</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Maintenant que vous savez comment installer/désinstaller des Hooks, nous pouvons examiner la procédure d'hook en elle-même.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>La procédure d'hook sera appelée à chaque fois qu'un événement étant associé au type de hook que vous a installé, arrive. Par exemple, si vous installez le hook <b><font color="#999900">WH_MOUSE</font></b> quand un événement de souris arrive, votre procédure d'hook sera appelée. Indépendamment du type de hook que vous avez installé, la procédure d'hook a toujours le prototype suivant :</font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#009900"><font size=-1>HookProc proto nCode:DWORD, wParam:DWORD, lParam:DWORD</font></font></font></b>
+<br>&nbsp;
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">nCode</font> indique le code du hook.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">wParam</font> et lParam contiennent une information complémentaire à propos de l'événement.</font></font></li>
+</ul>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>HookProc est en réalité le détenteur du nom de la fonction. Vous pouvez le nommer comme ça vous chante tant qu'il a le prototype vu ci-dessus. L'interprétation de nCode, wParam et lParam dépend du type de hook que vous avez installé. Donc de la valeur de retour de la procédure d'hook. Par exemple :</font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>WH_CALLWNDPROC</font></font></font></b>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">nCode</font> peut seulement être HC_ACTION ce qui signifie qu'il y a un message envoyé à une fenêtre.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">wParam</font> contient le message qui vient d'être envoyé, si ce n'est pas le cas il prendra la valeur zéro.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">lParam</font> pointe sur la structure CWPSTRUCT.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">La valeur de retour</font>: si on ne l'emploie pas , on gardera un retour NULL.</font></font></li>
+</ul>
+<b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>WH_MOUSE</font></font></font></b>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">nCode</font> peut être soit HC_ACTION soit HC_NOREMOVE.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">wParam</font> contient le message de la souris.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">lParam</font> pointe sur la structure MOUSEHOOKSTRUCT.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">La valeur de retour:</font> est '0' si le message doit être traité. Et '1' si le message doit être abandonné.</font></font></li>
+</ul>
+</blockquote>
+<font face="Arial,Helvetica"><font size=-1>Vous devez consulter votre référence win32 api pour de plus amples détails à propos de la signification des paramètres et de la valeur de retour des hooks que vous souhaitez installer.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Maintenant il reste un petit truc à comprendre à propos de la procédure d'hook. Rappelez-vous que votre Hook est mis à la suite et en tête de la liste des hooks installés les plus récemment (dans une liste de liée à votre prog). Quand un événement arrive, Windows appellera uniquement le premier hook de la liste. C'est le devoir de votre procédure d'hook d'appeler le hook suivant dans la liste. Vous pouvez choisir de ne pas appeler le hook suivant mais vous, mieux mieux que quiconque, savez ce que vous faites. La plupart du temps, c'est une bonne chose d'appeler la procédure suivante, comme ça les autres Hooks sont prêts. Vous pouvez appeler le hook suivant en appelant <b><font color="#009900">CallNextHookEx</font></b> lequel possède le prototype suivant :</font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#009900"><font size=-1>CallNextHookEx proto hHook:DWORD, nCode:DWORD, wParam:DWORD, lParam:DWORD</font></font></font></b>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">hHook</font> est l'handle de votre propre hook. La fonction emploie cet handle pour fouiller la liste et chercher la procédure d'hook qu'elle doit appeler ensuite.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1><font color="#FFFF00">nCode</font>, 
+<font color="#FFFF00">wParam</font> et <font color="#FFFF00">lParam</font> sont seulement trois valeurs que vous avez la possibilité de passer à d'autres fonctions. On les reçoit après l'appel: CallNextHookEx.</font></font></li>
+</ul>
+</blockquote>
+<font face="Arial,Helvetica"><font size=-1>Un point important sur les Hooks éloignés : la procédure d'hook doit résider dans un DLL lequel sera 'mappé' (configuré) dans d'autres processus. <FONT COLOR="#CCFFCC">(Voir le tutorial 13). </FONT>Lorsque Windows 'mappe' le DLL dans d'autres processus, il ne 'mappera' pas la section des données à l'intérieur de ces autres processus. Bref, tous les processus (les autres programmes) partagent une unique copie du code mais ils auront leur propre copie privée de la section des données du DLL! Ça peut être une surprise de taille pour les imprudents. Vous pouvez penser que lorsque vous stockez une valeur dans une variable appartenant à la section des données du DLL, que cette valeur sera partagée entres chacun des processus qui font appel à ce DLL., mais ce n'est pas tout à fait vrai. Dans une situation normale, ça se passe bien comme ça puisque on a l'illusion que chaque processus a sa propre copie du DLL. Mais ce n'est pas le cas quand hook de Windows est concerné. Nous souhaitons que le DLL soit identiques pour tous les processus, incluant les données. La solution : on doit marquer la section des données en tant que section partagée. On peut faire ça en spécifiant l'attribut de section dans le commutateur de linker. Pour MASM, vous avez besoin d'employer ce commutateur :</font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>/SECTION:&lt;section
+name>, S</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font size=-1>Le nom de la section des données initialisées est .data et les données non initialisées sont .bss. Par exemple si vous voulez assembler un DLL qui contient une procédure d'hook et que vous voulez que la section des données non initialisée soit partagée entre plusieurs processus, vous devez employer la ligne suivante :</font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>link /section:.bss,S&nbsp; /DLL&nbsp; /SUBSYSTEM:WINDOWS ..........</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font size=-1>L'attribut 'S' marque la section en tant que section partagée.</font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#3366FF"><font size=+0>Exemple:</font></font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>En fait il faut deux modules : Il y a le programme principal qui affichera les éléments graphiques du GUI (comme d'habitude, ex : les boutons la zone de saisie…) et l'autre partie c'est le DLL qui installera/désinstallera le hook.</font></font>
+<p><font face="Arial,Helvetica"><font size=-1>;---------------------------------------------
+Voici le code source du programme principal --------------------------------------</font></font>
+<br><b><font face="Arial,Helvetica"><font size=-1>.386</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>.model flat,stdcall</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>option casemap:none</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\windows.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\user32.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\kernel32.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>include mousehook.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#999900"><font size=-1>includelib mousehook.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>includelib \masm32\lib\user32.lib</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></b><b><font face="Arial,Helvetica"><font size=-1></font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>wsprintfA proto C :DWORD,:DWORD,:VARARG</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>wsprintf TEXTEQU &lt;wsprintfA></font></font></b><b><font face="Arial,Helvetica"><font size=-1></font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.const</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDD_MAINDLG&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 101</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDC_CLASSNAME&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 1000</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDC_HANDLE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 1001</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDC_WNDPROC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 1002</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDC_HOOK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 1004</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>IDC_EXIT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ 1005</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>WM_MOUSEHOOK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+equ WM_USER+6</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>DlgFunc PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.data</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>HookFlag dd FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>HookText db "&amp;Hook",0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>UnhookText db "&amp;Unhook",0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>template db "%lx",0</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.data?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>hInstance dd ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>hHook dd ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>.code</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>start:</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+GetModuleHandle,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov
+hInstance,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+DialogBoxParam,hInstance,IDD_MAINDLG,NULL,addr DlgFunc,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+ExitProcess,NULL</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>DlgFunc proc hDlg:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL
+hLib:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL
+buffer[128]:byte</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL
+buffer1[128]:byte</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; LOCAL
+rect:RECT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .if
+uMsg==WM_CLOSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if HookFlag==TRUE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke UninstallHook</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke EndDialog,hDlg,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .elseif
+uMsg==WM_INITDIALOG</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetWindowRect,hDlg,addr rect</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetWindowPos, hDlg, HWND_TOPMOST, rect.left, rect.top, rect.right,
+rect.bottom, SWP_SHOWWINDOW</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .elseif
+uMsg==WM_MOUSEHOOK</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_HANDLE,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke wsprintf,addr buffer,addr template,wParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HANDLE,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_CLASSNAME,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassName,wParam,addr buffer,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_CLASSNAME,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_WNDPROC,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassLong,wParam,GCL_WNDPROC</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke wsprintf,addr buffer,addr template,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_WNDPROC,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .elseif
+uMsg==WM_COMMAND</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if lParam!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edx,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr edx,16</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if dx==BN_CLICKED</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDC_EXIT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hDlg,WM_CLOSE,0,0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if HookFlag==FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke InstallHook,hDlg</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov HookFlag,TRUE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HOOK,addr UnhookText</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke UninstallHook</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HOOK,addr HookText</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov HookFlag,FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_CLASSNAME,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HANDLE,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_WNDPROC,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .else</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov
+eax,TRUE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>DlgFunc endp</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>end start</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>;---------------------------------------------------
+Et voici enfin le code source du DLL ------------------------------------</font></font>
+<br><b><font face="Arial,Helvetica"><font size=-1>.386</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>.model flat,stdcall</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>option casemap:none</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\windows.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\kernel32.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>include \masm32\include\user32.inc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>includelib \masm32\lib\user32.lib</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.const</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>WM_MOUSEHOOK equ WM_USER+6</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.data</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>hInstance dd 0</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.data?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>hHook dd ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>hWnd dd ?</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>.code</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>DllEntry proc hInst:HINSTANCE,
+reason:DWORD, reserved1:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .if
+reason==DLL_PROCESS_ATTACH</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInst</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop hInstance</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov&nbsp;
+eax,TRUE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>DllEntry Endp</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>MouseProc proc nCode:DWORD,wParam:DWORD,lParam:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+CallNextHookEx,hHook,nCode,wParam,lParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov
+edx,lParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; assume
+edx:PTR MOUSEHOOKSTRUCT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+WindowFromPoint,[edx].pt.x,[edx].pt.y</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+PostMessage,hWnd,WM_MOUSEHOOK,eax,0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; assume
+edx:nothing</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; xor
+eax,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>MouseProc endp</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>InstallHook proc hwnd:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; push
+hwnd</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; pop
+hWnd</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+SetWindowsHookEx,WH_MOUSE,addr MouseProc,hInstance,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov
+hHook,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>InstallHook endp</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>UninstallHook proc</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+UnhookWindowsHookEx,hHook</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>UninstallHook endp</font></font></b>
+<p><b><font face="Arial,Helvetica"><font size=-1>End DllEntry</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>;--------------------------------C'est le makefile du DLL (le moyen  de l'assembler)------------------------------</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>NAME=mousehook</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>$(NAME).dll: $(NAME).obj</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Link /SECTION:.bss,S&nbsp; /DLL /DEF:$(NAME).def /SUBSYSTEM:WINDOWS /LIBPATH:c:\masm\lib
+$(NAME).obj</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>$(NAME).obj: $(NAME).asm</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ml /c /coff /Cp $(NAME).asm</font></font></b>
+<br>&nbsp;
+<h3>
+<font face="Arial,Helvetica"><font color="#3366FF"><font size=+0>Analyse:</font></font></font></h3>
+<font face="Arial,Helvetica"><font size=-1>Cet exemple ouvrira une boîte de dialogue avec trois commandes d'éditions dans lesquels seront affichés : le nom de classe (Class Name), l'handle de la fenêtre (ou de l'objet) et l'adresse de la procédure de fenêtre (Window Proc). Ces 3 paramètres n'appartiendront pas forcément à votre propre programme, mais plus généralement à n'importe quel objet de n'importe quelle fenêtre sur lequel passe votre curseur de souris. Il y a deux boutons, 'hook' et 'Exit'. Quand vous appuyez sur le bouton 'hook', le programme Hooke l'entrée souris, et le texte du bouton se modifie en 'Unhook'. Quand vous déplacez le curseur de la souris vers une autre fenêtre ou sur un objet quelconque, les renseignements de cette fenêtre seront affichés dans votre fenêtre principale (votre DialogBox). Lorsque vous appuyez sur le bouton 'Unhook', le programme arrête de hooker le objets qui se trouvent sous la souris.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Ce programme utilise une boîte de dialogue en tant que fenêtre principale. On définit un message construit sur mesure (Custum) WM_MOUSEHOOK, lequel sera employé entre le programme principal et son DLL qui contient la fonction d'hook. Lorsque le programme principal reçoit ce message, wParam contient l'handle de la fenêtre  (ou de l'objet) sur lequel votre curseur de souris est placé. Bien sûr, c'est un choix arbitraire. J'ai décidé d'envoyer la valeur de l'handle dans wParam pour plus de simplicité. Mais vous pouvez très bien choisir votre propre méthode de communication entre le programme principal et le  DLL (contenant le hook).</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if HookFlag==FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke InstallHook,hDlg</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov HookFlag,TRUE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HOOK,addr UnhookText</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Le programme maintient un 'Flag' nommé HookFlag, pour rendre compte de l'état du hook. S'il est 'FALSE'(faux) alors c'est que le hook n'est pas activé. Au contraire s'il est TRUE(vrai) c'est qu'il est actif.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Quand l'utilisateur appuie sur le bouton 'hook', le programme vérifie s'il est déjà installé (actif). Si ce n'est pas le cas, on appelle la fonction InstallHook du hook du DLL pour l'installer. Notez que nous passons l'handle de notre dialogBox principale en tant que paramètre de la fonction pour que le  DLL (contenant la fonction d'hook) puisse envoyer les différents messages WM_MOUSEHOOK vers la bonne fenêtre, c'est-à-dire la nôtre.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>A partir du moment où le programme est chargé, le DLL est chargé lui aussi. En réalité, les DLLs sont immédiatement chargés après que le programme ait été mis en mémoire. L'entrypoint du DLL est appelé avant même que la première instruction du programme principal ne soit exécuté. (EntryPoint=première ligne de code lue dans un programme=début) Ainsi quand le programme principal se met en route, le(s) DLL(s) est/sont déjà initialisé(s). Nous écrivons le code suivant pour l'entrypoint du DLL :</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .if
+reason==DLL_PROCESS_ATTACH</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInst</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop hInstance</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .endif</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Ce code sauvegarde juste l'instance handle du DLL dans une variable globale nommée hInstance pour pouvoir l'utiliser dans la fonction InstallHook. Puisque l'entrypoint du DLL est appelé avant les autres fonctions dans le DLL, l'hInstance est toujours valable. On définit hInstance dans la section .data pour que cette valeur soit prête "pou le processus". Le DLL est 'mappé'(configuré) dans le process, avant même que le curseur de souris ne plane au-dessus des fenêtres ou objets qu'elle doit hooker. Imaginez-vous que par hasard il y ait déjà un DLL qui occupe l'adresse de chargement destinée au DLL (contenant notre hook), alors dans ce cas le DLL serait reconfiguré à une autre adresse. La valeur de 'hInstance' serait remise à jour en prenant en compte la nouvelle adresse de chargement. Lorsque l'utilisateur presse le bouton 'Unhook' puis par la suite le bouton 'Hook', SetWindowsHookEx sera de nouveau appelé. Cependant, cette fois, il utilisera la nouvelle adresse de chargement en tant qu' instance handle mais qui malheureusement sera faux puisque dans notre programme d'exemple, l'adresse de chargement du DLL n'aura pas été changée. Le Hook sera local, c'est pourquoi vous pourrez uniquement hooker les événements de la souris qui arriveront dans votre propre fenêtre. À peine désirable.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>InstallHook proc hwnd:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; push
+hwnd</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; pop
+hWnd</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke
+SetWindowsHookEx,WH_MOUSE,addr MouseProc,hInstance,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov
+hHook,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>InstallHook endp</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>La fonction InstallHook est très simple en elle-même. Elle sauvegarde l'handle de la fenêtre dans une variable globale nommée hWnd pour l'utiliser plus tard. On appelle alors SetWindowsHookEx pour installer (activer) le hook sous la souris. La valeur de retour de SetWindowsHookEx est stockée dans une variable globale nommée hHook pour l'utiliser avec UnhookWindowsHookEx au moment où on souhaite désactiver ce hook.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Après qu'on ait appelé SetWindowsHookEx, le hook sous la souris est fonctionnel. Chaque fois qu'un événement souris arrive dans le système, MouseProc (votre procédure d'hook) est appelé.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>MouseProc proc nCode:DWORD,wParam:DWORD,lParam:DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke CallNextHookEx,hHook,nCode,wParam,lParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; mov edx,lParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; assume edx:PTR MOUSEHOOKSTRUCT</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke WindowFromPoint,[edx].pt.x,[edx].pt.y</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; invoke PostMessage,hWnd,WM_MOUSEHOOK,eax,0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; assume edx:nothing</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; xor eax,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; ret</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>MouseProc endp</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>La première chose à faire, c'est d'appeler CallNextHookEx pour donner à d'autres Hooks la chance de traiter de nouveaux événements souris. Après ça, on appelle la fonction WindowFromPoint pour retrouver l'handle de la fenêtre (ou de l'objet) auxquelles sont indiquées les coordonnée (écran) de la souris. Remarquez que nous employons POINT dans la structure MOUSEHOOKSTRUCT représenté par lParam en tant que coordonnées actuelles de la souris. Après ça nous envoyons l'handle de la fenêtre (ou de l'objet) au programme principal via PostMessage avec le message WM_MOUSEHOOK. Une chose à se rappeler, c'est que : vous ne devez pas employer SendMessage à l'intérieur de la procédure d'hook, ceci peut provoquer une impasse pour les messages. Je recommande PostMessage. La structure MOUSEHOOKSTRUCT est définie ainsi:</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>MOUSEHOOKSTRUCT STRUCT DWORD</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp; pt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+POINT &lt;></font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp; hwnd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp; wHitTestCode&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp; dwExtraInfo&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>MOUSEHOOKSTRUCT ENDS</font></font></b>
+<br>&nbsp;
+<ul>
+<li>
+<font face="Arial,Helvetica"><font size=-1>'pt' représente les coordonnées (coordonnées écran) actuelles du curseur de la souris.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>hwnd est l'handle de la fenêtre qui recevra le message souris. En général, c'est la fenêtre qui se trouve sous le curseur de la souris, mais pas toujours. Si une fenêtre appelle SetCapture, l'entrée souris sera redirigée spécialement vers cette fenêtre au lieu de celle sur laquelle passe notre souris. À cause de ça, je n'utilise pas le membre hwnd de cette structure, mais par contre j'appelle WindowFromPoint à la place.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>wHitTestCode représente une valeur de coup d'essai. La valeur de coup d'essai donne plus d'information sur la position actuelle du curseur de la souris. Il indique dans quelle partie de la fenêtre est ce que le curseur souris se trouve. Pour la liste complète, vérifiez votre référence api win32 avec le message WM_NCHITTEST.</font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font size=-1>dwExtraInfo contient l'information supplémentaire associée au message. Normalement cette valeur est créée à partir de l'appel mouse_event et retrouvée en appelant GetMessageExtraInfo.</font></font></li>
+</ul>
+<font face="Arial,Helvetica"><font size=-1>Quand la fenêtre principale reçoit le message WM_MOUSEHOOK, on emploie l'handle de la fenêtre placé dans wParam pour retrouver l'information de la fenêtre.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp; .elseif
+uMsg==WM_MOUSEHOOK</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_HANDLE,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke wsprintf,addr buffer,addr template,wParam</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HANDLE,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_CLASSNAME,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassName,wParam,addr buffer,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_CLASSNAME,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetDlgItemText,hDlg,IDC_WNDPROC,addr buffer1,128</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetClassLong,wParam,GCL_WNDPROC</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke wsprintf,addr buffer,addr template,eax</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcmpi,addr buffer,addr buffer1</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=0</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_WNDPROC,addr buffer</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Pour éviter des scintillements, nous vérifions le texte qui est déjà inscrit dans les commandes d'édition avec le texte que nous souhaitons placer à leur place. s'ils sont identiques, on saute par dessus l'instruction de réécriture.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Nous retrouvons le nom de classe  (la Class Name) en appelant GetClassName, et l'adresse de la procédure de fenêtre (La Window Proc) en appelant GetClassLong avec GCL_WNDPROC puis les mettons ensuite sous forme de chaînes de caractères pour les placer dans les contrôles d'édition appropriés.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke UninstallHook</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HOOK,addr HookText</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov HookFlag,FALSE</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_CLASSNAME,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_HANDLE,NULL</font></font></b>
+<br><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetDlgItemText,hDlg,IDC_WNDPROC,NULL</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>Quand l'utilisateur appuie sur le bouton 'Unhook', le programme appelle la fonction UninstallHook qui se trouve dans le DLL (avec la fonction hook). UninstallHook appelle uniquement UnhookWindowsHookEx. Après ça, le texte du bouton se retransforme en "Hook", le flaf HookFlag est remis à 'False' et on bloque le contenu des contrôles d'édition.</font></font>
+<br><font face="Arial,Helvetica"><font size=-1>Notez comment est décrit le linker dans le makefile.</font></font>
+<p><b><font face="Arial,Helvetica"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Link /SECTION:.bss,S&nbsp; /DLL /DEF:$(NAME).def /SUBSYSTEM:WINDOWS</font></font></b>
+<p><font face="Arial,Helvetica"><font size=-1>La section .bss est définie comme une section partagée pour faire en sorte que plusieurs processus (programmes) puissent utiliser les données non initialisée de ce DLL en même temps. Sans ce commutateur, votre DLL ne fonctionnerait pas correctement.</font></font>
+<br>
+<hr WIDTH="100%">
+<center><b>[<a href="http://win32asm.cjb.net">Iczelion's Win32 Assembly Homepage</a>]</b></center>
+<BR><BR><DIV ALIGN="right">Traduit pas Morgatte</DIV>
+</body>
+</html>

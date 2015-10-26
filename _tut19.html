@@ -1,0 +1,661 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 19: Tree View Control</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000080" link="#FFFF00" vlink="#8080FF" alink="#FF00FF">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#FFFF99"><BR>Tutorial 19: Contrôle 'des dossiers organisés sous la forme d'un arbre'<BR><BR>(Tree View Control)<BR><BR></font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Dans ce Tutorial, nous allons voir ce qu'est un 'tree view control' (C'est exactement de cette façon là que l'Explorateur Windows nous affiche sous forme d'un arbre tous les dossiers de notre disque dur). De plus, nous apprendrons aussi à construire le mécanisme du 'drag and drop' (glisser-déposer) et comment employer une 'image list' (liste d'image).</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Downloadez l'exemple<a href="files/tut19.zip"> ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#009900"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Un 'tree view control' est une sorte de fenêtre spéciale qui affiche des objets en ordre hiérarchique. Le meilleur exemple c'est la fenêtre de gauche de l'Explorateur de Windows. Vous pouvez employer ce contrôle pour montrer les raccordements entre les différents objets (ici des dossiers).</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez créer un 'tree view control' en appelant CreateWindowEx, en lui passant la donnée "SysTreeView32" comme nom de classe ou bien vous pouvez l'incorporer dans une boîte de dialogue. N'oubliez pas de placer un Call InitCommonControls dans votre code.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Il y a plusieurs styles différents de 'tree view control'. Ci-dessous voici les trois plus employés.
+<ul><b><FONT COLOR="#FFFF00">TVS_HASBUTTONS</FONT> sert à mettre les petits boutons carrés 'plus (+) et moins (-)' à côté des l'Items parentaux (à côté des dossiers par exemple). L'utilisateur clique sur un de ces bouton associés à un dossier parent pour qu'il se déploie et affiche ses sous dossiers ou se recroqueville sur lui-même. Pour pouvoir inclure des boutons au niveau de la racine des Items de l'arbre, on doit également spécifié TVS_LINESATROOT.</b>
+<br><b><FONT COLOR="#FFFF00">TVS_HASLINES</FONT> emploie des lignes pour montrer la hiérarchie entre les différents Items.</b>
+<br><b><FONT COLOR="#FFFF00">TVS_LINESATROOT</FONT> emploie des lignes pour lier des Items à la racine du 'tree-view control'. Cette valeur est ignorée si TVS_HASLINES n'est pas également spécifié.</b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Le 'tree view control', comme d'autre common controls, communique avec la fenêtre parente via des messages. La fenêtre parente peut lui envoyer divers messages et le 'tree view control' peut envoyer des messages "d'avis" à sa fenêtre parente. À cet égard, le 'tree view control' n'est pas différent des fenêtres habituelles.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand quelque chose d'intéressant lui arrive, il envoie un message <b>WM_NOTIFY</b> à la fenêtre parente en l'accompagnant de l'information.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WM_NOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WParam est le n°d'IDentité du Contrôle (Control ID), on ne garantit pas que cette valeur soit unique donc nous ne </font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+l'emploierons pas. Au lieu de ça, nous employons hwndFrom ou le membre IDFrom de la structure </font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+NMHDR pointé par lParam</font></font></font></b><BR>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>LParam est le pointer qui repère la structure NMHDR. Certaines commandes peuvent passer un pointer de plus </font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+grande taille. Mais il doit avoir une structure NMHDR dans son premier membre.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+C'est-à-dire qu'au moins pour lParam, vous devez être sûrs qu'il indique une structure NMHDR.</font></font></font></b>
+</ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Maintenant examinons la structure NMHDR.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>NMHDR struct DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+hwndFrom&nbsp;&nbsp;&nbsp; DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+idFrom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+code&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>NMHDR ends</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><FONT COLOR="#FFCC99">HwndFrom</FONT> est l'handle du contrôle qui envoie ce message <b>WM_NOTIFY</b>.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><FONT COLOR="#FFCC99">IdFrom</FONT> est le contrôle ID du contrôle qui envoie ce message WM_NOTIFY.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><FONT COLOR="#FFCC99">Code</FONT> est le message réel que le contrôle veut envoyer à la fenêtre parente.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Les réponses du 'Tree View' sont celles avec TVN_ au début du nom. Les messages du Tree View sont ceux avec TVM _, tels que <b>TVM_CREATEDRAGIMAGE</b>. Le 'tree view control' envoie TVN_XXXX dans le membre de code du NMHDR. La fenêtre parente peut envoyer TVM_XXXX pour le contrôler.</font></font></font>
+<h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ajout d'Item au tree view control</h4> Après que vous l'ayez créé, vous pouvez même rajouter des Item (des articles) au tree view control. Vous pouvez faire ça en employant le message <b>TVM_INSERTITEM</b>.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVM_INSERTITEM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>wParam = 0;</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>lParam = est le pointeur qui (pointe) sur TV_INSERTSTRUCT;</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>A ce niveau, on doit connaître quelques petits trucs à propos des Items (articles) du tree view control.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Un Item peut être lui-même parent, enfant (un child) , ou les deux en même temps. Un Item parent est un Item qui a d'autres sous-Items associés qui dépendent de lui. En même temps, cet Item parent peut aussi être l'enfant d'un autre Item. Un Item sans un parent est appelé un Item racine (par exemple : dans l'Explorateur de Windows, l'item 'Windows' est un item parent alors que l'Item 'System' est un de ses items enfant). Il peut y avoir plusieurs d'Items racine dans un 'tree view control'. Maintenant examinons la structure <b>TV_INSERTSTRUCT</b>.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TV_INSERTSTRUCT STRUCT DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;hParent&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;hInsertAfter&nbsp;&nbsp; DWORD ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ITEMTYPE &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TV_INSERTSTRUCT ENDS</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>hParent</b>  est l'handle de l'Item parent. Si ce membre est la valeur <b>TVI_ROOT</b> ou NULL, l'Item est inséré à la racine du 'tree view control'.<Br><b>hInsertAfter</b> est l'handle d'un prochain Item, qu'il soit un 'Child Item' ou bien un nouvel 'Item Parent':</font></font></font>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVI_FIRST = > Insère un Item au début de la liste.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVI_LAST = > Insère un Item en fin de liste.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVI_SORT = > Insère un Item dans la liste dans l'ordre alphabétique.</font></font></font></li>
+</ul>
+
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ITEMTYPE UNION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+itemex TVITEMEX &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+item TVITEM &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ITEMTYPE ENDS</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Nous emploierons uniquement TV_ITEM ici.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><FONT COLOR="#FFCC00"><font size=-1>TV_ITEM STRUCT DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+imask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+hItem&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+state&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+stateMask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+pszText&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+cchTextMax&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+iImage&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+iSelectedImage&nbsp;&nbsp;&nbsp; DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+cChildren&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;
+lParam&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ?</font></font></font></b>
+<br><b>TV_ITEM ENDS</b></ul>
+Cette structure est employée pour envoyer et recevoir des renseignements (des messages) d'un Item du Tree View. Par exemple, avec <b>TVM_INSERTITEM</b>, il est employé pour définir l'attribut de l'Item qui doit être inséré dans le tree view control. Avec <b>TVM_GETITEM</b>, on envoie l'information pour choisir le type de Tree View Item.
+<br><b>imask</b> est employé pour spécifier quel(s) membre(s) de la structure <b>TV_ITEM</b> est (sont) valide(s). Par exemple, si la valeur dans Imask est <b>TVIF_TEXT</b>, ça signifie qu'uniquement le membre pszText est valide. Vous pouvez combiner plusieurs flags ensembles.
+<br><b>hItem</b> est l'handle de l'Item du Tree View. Chaque item a son propre handle. Lorsque vous souhaitez manipuler ou utiliser un item, vous devez le choisir grâce à son handle.
+<br><font size=-1><b>pszText</b> est un pointeur qui (pointe) sur une chaîne de caractères terminée par un caractère nul. Cette chaîne de caractères est le label de l'Item du Tree View (Le texte associé à cet Item).
+<br><font size=-1><b>cchTextMax</b> est uniquement employé lorsque vous voulez retrouver le label de l'Item du Tree View. Puisque vous pointer sur le buffer de pszText (on pointe sur la zone mémoire où est écrit le texte), Windows doit connaître la taille de ce buffer. Ce membre (cchTextMax) sert donc à donner la taille du buffer.
+<br><b>iImage</b> et <b>iSelectedImage</b> font référence à l'index d'une 'image list' laquelle contient des images qui doivent être affichées lorsque l'Item n'est pas choisi (iImage) et quand il est choisi (iSelectedImage). Si vous vous souvenez de la fenêtre de gauche de l'Explorateur Windows, les images des dossiers sont contrôlées par ces deux membres.
+<br>Afin d'insérer un Item dans un tree view control, vous devez au moins mettre des valeurs dans hParent, hInsertAfter et vous devez remplir imask ainsi que le membre pszText.</font></font></font>
+<h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Addition d'images à un tree view control :</font></font></font></h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Si vous souhaitez placer une image à gauche du label (du texte) d'un 'Tree View Item', vous devez créer une 'image list' et l'associer au 'tree view control'. Vous pouvez créer une 'image list' en appelant <b>ImageList_Create</b>.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ImageList_Create PROTO cx:DWORD, cy:DWORD, flags:DWORD, \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+cInitial:DWORD,&nbsp; cGrow:DWORD</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Cette fonction ,si elle se déroule avec succès, renvoie l'handle d'une 'image list' vide.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>cx</b> représente la largeur (en pixels) de chaque image dans cet 'image list'.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>cy</b> est la hauteur de chaque image (en pixels) de cet 'image list'. Toutes les images de l' 'image list' doivent être égales en taille. Si vous définissez un grand bitmap (image), Windows emploiera cx et cy pour la *découper* en plusieurs morceaux. Donc vous devez préparer votre propre image comme une bande d'images avec des dimensions identiques.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>flags</b> détermine le type d'images contenues dans cet 'image list', si elles sont colorées ou monochromes et leur profondeur de colorations (16millions de couleurs ou moins). Consultez votre référence win32 api pour de plus amples détails.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>cInitial</b> est le nombre d'images que cet 'image list' contiendra au commencement. Windows emploiera ces renseignements pour réserver de la mémoire pour ces images.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>cGrow</b> est le nombre d'images dont l'image list peut être agrandit lorsque le système a besoin de retaillée la liste de départ pour faire place pour de nouvelles images. Ce paramètre représente le nombre de nouvelles images que l'image list agrandit peut contenir.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>L' image list n'est pas une fenêtre! C'est seulement une sorte d'entrepos d'images pour que  d'autres fenêtres puisse s'en servir.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Après que l'image list soit créé, vous pouvez y ajouter des images en appelant <b>ImageList_Add</b></font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ImageList_Add
+PROTO himl:DWORD, hbmImage:DWORD, hbmMask:DWORD</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Cette fonction renvoie la valeur -1 si elle échoue.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>himl</b> est l'handle de l'image list dans laquelle vous souhaitez ajouter d'autres images. Cette la valeur obtenue après le succès d'un appel à <b>ImageList_Create</b></font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>hbmImage</b> est l'handle de l'image qui doit être rajoutée à l' 'image list'. D'habitude, on stocke les images en tant que ressources et on les charge grâce à l'appel <b>LoadBitmap</b>. Remarquez que vous n'avez pas à spécifier le nombre de morceaux d'images contenues dans cette image (entière) parce que cette information est représentée par les paramètres cx et cy, lesquels sont déduits lors de leur passage dans l'appel <b>ImageList_Create</b>.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>hbmMask</b> est l'handle du bitmap (l'image en entier) qui contient le masque. Si aucun masque n'est employé avec l'image list, ce paramètre est ignoré.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Normalement, nous ajoutons seulement deux images à une image list pour les utiliser avec le tree view control : celles-ci sont employées soit quand l'Item du Tree View n'est pas sélectionné soit l'autre quand l'Item est sélectionné.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l' image list est prête, vous l'associez avec le tree view control en envoyant <b>TVM_SETIMAGELIST</b> au tree view control.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVM_SETIMAGELIST</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WParam = type d'image list à afficher. Il y a deux choix :</font></font></font></b>
+<ul>
+<li>
+<b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVSIL_NORMAL est le Jeu normal d' image list, qui contient les images choisies et non choisies pour l'Item du Tree View.</font></font></font></b></li>
+
+<li>
+<b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVSIL_STATE est le Jeu 'd'état' d' image list, qui contient les images d'Item de Tree View qui sont dans un état défini par l'utilisateur.</font></font></font></b></li>
+</ul>
+<b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>lParam = handle de l' image list</font></font></font></b></ul>
+
+<h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Recherche des renseignements a propos des items d'un tree view. </font></font></font></h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez retrouver l'information d'un Item du Tree View en envoyant le message <b>TVM_GETITEM</b>.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVM_GETITEM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>wParam = 0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>lParam = pointer sur la structure TV_ITEM pour qu'on puisse la remplir avec l'information.</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Avant que vous n'envoyiez ce message, vous devez remplir imask avec le flag qui dit quel(s) sorte(s) de <b>TV_ITEM</b> est ce que vous souhaitez que Windows prenne. Et  plus important, vous devez remplir hItem avec l'handle de l'Item dont vous voulez avoir l'information. Et ça pose un problème : Comment peut-on connaître l'handle de l'Item dont on souhaite justement retrouver des renseignements? Doit-on stocker tous les handles du Tree View?</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>La réponse est très simple : faut pas faire ça. On peut utiliser le message <b>TVM_GETNEXTITEM</b> du tree view control pour retrouver l'handle de l'Item dont on a spécifié l'attribut(s). Par exemple, on peut vérifier l'handle du premier Child Item, de  l'Item racine, ou de l'Item choisi, et cetera.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TVM_GETNEXTITEM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>wParam
+= flag</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>lParam = handle d'un Item du Tree View (seulement nécessaire pour certaines valeurs de flag)</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>La valeur dans wParam est très importante donc je met tous les flags ci-dessous :</font></font></font>
+<ul>
+<ul>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_CARET</b> Retrouve l'Item actuellement choisi.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_CHILD</b> Retrouve le premier Child Item appartenant à l'Item indiqué par le paramètre hitem.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_DROPHILITE</b> Retrouve l'Item qui est la cible d'une opération de glisser-déplacer. (Drad and Drop)</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b> TVGN_FIRSTVISIBLE </b> Retrouve le premier Item visible.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_NEXT</b> Retrouve le Child Item suivant (de mêmes parents).</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_NEXTVISIBLE</b> Retrouve l'Item visible qui suit l'Item indiqué. L'Item indiqué doit être visible. Utilisez le message TVM_GETITEMRECT pour déterminer si un Item est visible.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_PARENT</b> Retrouve le parent de l'Item indiqué.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_PREVIOUS</b> Retrouve le Child Item précédent (de mêmes parents).</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_PREVIOUSVISIBLE</b> Retrouve le premier Item visible qui précède l'Item indiqué. L'Item indiqué doit être visible. Employez le message TVM_GETITEMRECT pour déterminer si un Item est visible.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>TVGN_ROOT</b> Retrouve le topmost (ex: C:) ou le tout premier Item du tree-view control.</font></font></font></li>
+</ul>
+</ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Vous pouvez voir que, vous pouvez retrouver l'handle de n'importe quel Item du Tree View en vous intéressant à ces messages. <B>SendMessage</b> renvoie l'handle de l'Item du Tree View si la tache est couronnée de succès. Vous pouvez alors remplir le membre hItem (appartenant à <b>TV_ITEM</b>) avec la valeur de l'handle renvoyé pour ensuite pouvoir l'utiliser avec le message <b>TVM_GETITEM</b>.</font></font></font>
+<h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Opération Drag and Drop (glisser-déposer) dans un tree view control</font></font></font></h4>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Cette partie est la raison pour laquelle j'ai décidé d'écrire ce Tutorial. Quand j'ai essayé de suivre l'exemple de la référence win32 api (le win32.hlp d'InPrise), j'ai vraiment été frustré parce qu'en fait il manque l'information essentielle. D'essais en essais et d'erreurs en erreurs, j'ai fini par comprendre comment utiliser le système de 'Drag and Drap' d'un tree view control et je ne veux pas que d'autres personnes aient à refaire le même chemin de croix que moi.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ci-dessous voici les étapes pour accomplir une opération Drag&Drop dans un tree view control.</font></font></font>
+<ol>
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'utilisateur essaye de déplacer un Item, le tree view control envoie le message <b>TVN_BEGINDRAG</b> à la fenêtre parente. Vous pouvez profiter de cette occasion pour créer une image de traînée qui est l'image qui sera employée pour représenter l'Item quand on le déplace. Vous pouvez envoyer <b>TVM_CREATEDRAGIMAGE</b> au tree view control pour lui dire de créer une 'image de traînée' par défaut de l'image qui est actuellement employée par l'Item que l'on déplace. Le tree view control créera une image list avec uniquement l 'image de traînée' et vous renverra l'handle de cette image list.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Après que l'image de traînée aie été créée, vous définissez le point chaud de l'image de traînée en appelant <b>ImageList_BeginDrag</b>.</font></font></font></li>
+
+<ol><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ImageList_BeginDrag PROTO himlTrack:DWORD,&nbsp; \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+iTrack:DWORD , \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dxHotspot:DWORD, \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+dyHotspot:DWORD</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>himlTrack</b> est l'handle de l'image list qui contient l'image de traînée.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>iTrack</b> est l'index qui indique l'image de traînée dans l'image list.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>dxHotspot</b> indique la distance relative du point chaud (de l'image de traînée)dans le plan horizontal. Puisque cette image sera employée à la place du curseur de la souris, nous avons donc besoin de définir où se situe le point chaud dans l'image.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>dyHotspot</b> indique la distance relative du point chaud dans le plan vertical.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Normalement, iTrack sera mis à 0 si vous dites au tree view control de créer une image de traînée à votre place. Et dxHotspot et dyHotspot peuvent être égales à 0 si vous voulez placer le point chaud au niveau du coin supérieur gauche de l'image de traînée.</font></font></font></ol>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'image de traînée est prête à être affichée, nous appelons <b>ImageList_DragEnter</b> pour la faire apparaître dans la fenêtre.</font></font></font></li>
+
+<ol><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ImageList_DragEnter PROTO hwndLock:DWORD, x:DWORD, y:DWORD</font></font></font></b>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>hwndLock</b> est l'handle de la fenêtre qui affiche l'image de traînée. Cette image n'aura pas la possibilité de se déplacer à l'extérieur de cette fenêtre.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1><b>x et y</b> sont les coordonnées de l'endroit où l'image de traînée doit être affichée au commencement. Remarquez que ces valeurs on pour référence (0;0) le  coin supérieur gauche de la fenêtre, et non pas son secteur client.</font></font></font></ol>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Maintenant que l'image de traînée est affichée dans la fenêtre, vous devrez maintenir l'opération (DRAG) de traînée dans le tree view control. Cependant, il y a un petit problème ici. Nous devons contrôler le chemin de la traînée avec <b>WM_MOUSEMOVE</b> et l'emplacement où on dépose (DROP) avec le message <b>WM_LBUTTONUP</b>. Cependant, si l'image de traînée appartient à une  autre 'Child Windows' (donc pas à notre fenêtre principale [ou parente]), la fenêtre parente ne recevra jamais le message de la souris. La solution est de capturer l'entrée souris avec <b>SetCapture</b>. En employant l'appel, les messages souris seront dirigés vers la fenêtre indiquée indépendamment de l'endroit où se trouve le curseur de la souris (et ici le curseur de la souris vient d'être momentanément remplacé par l'image de traînée).</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>A l'intérieur de <b>WM_MOUSEMOVE</b>, vous mettrez à jour le chemin de la traînée avec l'appel de ImageList_DragMove. Cette fonction déplace l'image que l'on traîne pendant une opération de glisser-déplacer. En outre, si c'est votre souhait, vous pouvez  contrôler l'Item de l'image de traînée en envoyant <b>TVM_HITTEST</b> pour vérifier si l'image de traînée passe au dessus d'un autre Item. Si c'est le cas, vous pouvez envoyer le message <b>TVM_SELECTITEM</b> avec le flag rendu par <b>TVGN_DROPHILITE</b>. Remarquez qu'avant l'envoi du message <b>TVM_SELECTITEM</b>, vous devez d'abord cacher l'image de traînée sinon votre image laissera de vilaines traces en se déplaçant. Vous pouvez cacher l'image de traînée en appelant ImageList_DragShowNolock et, après que l'opération soit finie, appelez ImageList_DragShowNolock de nouveau pour réafficher l'image de traînée.</font></font></font></li>
+
+<li>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'utilisateur relâche le bouton gauche de la souris, vous devez faire plusieurs choses. Si vous perdez le contôle de votre Item, vous deviez le réactiver en envoyant le message <b>TVM_SELECTITEM</b> avec le flag rendu par <b>TVGN_DROPHILITE</b> (pour retrouver l'handle de l'item qui vient de subir le Déplacer-Poser (Drag and Drop)), mais cette fois-ci, lParam DOIT ÊTRE égal à zéro. Si vous n'avez plus le contrôle de votre Item, vous obtiendrez un étrange effet : quand vous choisissez un autre Item, celui-ci sera contenu dans un rectangle mais le contrôle sera toujours sur le dernier Item. Ensuite, vous devez appeler <b>ImageList_DragLeave</b> suivi d' <b>ImageList_EndDrag</b>. Vous devez relâcher la souris en appelant <b>ReleaseCapture</b>. Si vous avez créé une image list, vous devez la détruire en appelant <b>ImageList_Destroy</b>. Après ça, lorsque l'opération de drag and drop est terminée, vous pouvez continuer le déroulement normal de votre programme.</font></font></font></li>
+</ol>
+
+<h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Code sample:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.model flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>option casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\comctl32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>include \masm32\include\gdi32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\gdi32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\comctl32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain PROTO :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>IDB_TREE equ 4006&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; c'est  l'ID de la ressource bitmap (le n° d'Identité de l'image entière)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>ClassName&nbsp;db "TreeViewWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>AppName&nbsp;&nbsp;&nbsp;db "Tree View Demo",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>TreeViewClass&nbsp;db "SysTreeView32",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Parent&nbsp;db "Parent Item",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Child1&nbsp;db "child1",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Child2&nbsp;db "child2",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>DragMode dd FALSE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; un flag pour déterminer si nous sommes en mode Drag (traînée)</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hwndTreeViewdd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; handle du tree view control</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hParent dd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; handle de l 'Item racine' du Tree View.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hImageList dd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; handle de l 'image list' employée dans le 'tree view control'.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>hDragImageList dd ?&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ; handle de l 'image list' où on a l'habitude de stocker l'image de traînée.</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>.code</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>start:</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke GetModuleHandle, NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke WinMain, hInstance,NULL,NULL, SW_SHOWDEFAULT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ExitProcess,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke InitCommonControls</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_APPWORKSPACE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPED+WS_CAPTION+WS_SYSMENU+WS_MINIMIZEBOX+WS_MAXIMIZEBOX+WS_VISIBLE,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,200,400,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.while TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endw</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WinMain
+endp</font></font></font></b>
+<p><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WndProc
+proc uses edi hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL tvinsert:TV_INSERTSTRUCT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hBitmap:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL tvhit:TV_HITTESTINFO</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.if uMsg==WM_CREATE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR TreeViewClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE+TVS_HASLINES+TVS_HASBUTTONS+TVS_LINESATROOT,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+0,200,400,hWnd,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Crée le 'tree view control'</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hwndTreeView,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Create,16,16,ILC_COLOR16,2,10&nbsp;&nbsp;&nbsp; ; Crée l 'image list' associée.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hImageList,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadBitmap,hInstance,IDB_TREE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+; Charge le bitmap ressource (charge l'image).</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hBitmap,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Add,hImageList,hBitmap,NULL&nbsp;&nbsp;&nbsp; ; Ajoute le bitmap dans l 'image list'.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DeleteObject,hBitmap&nbsp;&nbsp;&nbsp; ; Supprime ce bitmap pour toujours.</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SETIMAGELIST,0,hImageList</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hParent,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hInsertAfter,TVI_ROOT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.imask,TVIF_TEXT+TVIF_IMAGE+TVIF_SELECTEDIMAGE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.pszText,offset Parent</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.iImage,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.iSelectedImage,1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hParent,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hParent,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hInsertAfter,TVI_LAST</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.pszText,offset Child1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.item.pszText,offset Child2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_MOUSEMOVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if DragMode==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0ffffh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ecx,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr ecx,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvhit.pt.x,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvhit.pt.y,ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragMove,eax,ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragShowNolock,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_HITTEST,NULL,addr tvhit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_DROPHILITE,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragShowNolock,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_LBUTTONUP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if DragMode==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragLeave,hwndTreeView</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_EndDrag</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Destroy,hDragImageList</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_GETNEXTITEM,TVGN_DROPHILITE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_CARET,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_DROPHILITE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReleaseCapture</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov DragMode,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_NOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edi,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+assume edi:ptr NM_TREEVIEW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if [edi].hdr.code==TVN_BEGINDRAG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_CREATEDRAGIMAGE,0,[edi].itemNew.hItem</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hDragImageList,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_BeginDrag,hDragImageList,0,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragEnter,hwndTreeView,[edi].ptDrag.x,[edi].ptDrag.y</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetCapture,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov DragMode,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+assume edi:nothing</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>WndProc endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>end start</font></font></font></b>
+<h3>
+<b><font face="Arial,Helvetica"><font color="#00CC00"><font size=+0>Analyse:</font></font></font></b></h3>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Avec WM_CREATE, vous créez tree view control.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,NULL,ADDR TreeViewClass,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_CHILD+WS_VISIBLE+TVS_HASLINES+TVS_HASBUTTONS+TVS_LINESATROOT,0,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+0,200,400,hWnd,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInstance,NULL</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Remarquez les styles. TVS_xxxx représentent des styles spéciaux de Tree View.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Create,16,16,ILC_COLOR16,2,10</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hImageList,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke LoadBitmap,hInstance,IDB_TREE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hBitmap,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Add,hImageList,hBitmap,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DeleteObject,hBitmap</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SETIMAGELIST,0,hImageList</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Ensuite, vous créez une 'image list' vide à son ouverture, laquelle acceptera des images de 16x16 pixels et en  couleur 16 bits. Elle contiendra 2 images, mais on peut l'agrandir à 10 images si le besoin s'en fait ressentir. Nous chargeons alors le bitmap et l'ajoutons à l' image list' juste créé. Après ça, nous supprimons l'handle du bitmap puisque il ne sera plus employé désormais. Quand l 'image list' est définitivement finie, nous l'associons au tree view control en envoyant le message TVM_SETIMAGELIST au tree view control.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hParent,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hInsertAfter,TVI_ROOT</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.imask,TVIF_TEXT+TVIF_IMAGE+TVIF_SELECTEDIMAGE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.pszText,offset Parent</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.iImage,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.iSelectedImage,1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Nous insérons des Items dans le tree view control, en commençant à partir de l'Item racine. Puisque il s'agit de l'Item racine, le membre hParent est NULL et hInsertAfter est TVI_ROOT. Le membre imask indique que les membres pszText, iImage et iSelectedImage de la structure TV_ITEM sont valables. Nous remplissons ces trois membres des valeurs appropriée. pszText contient le label de l'Item racine (son texte), iImage est l'index de l'image dans l 'image list' qui sera montré à gauche de l'Item non choisi et iSelectedImage est l'index de l'image dans l  'image list' qui sera montré quand l'Item est choisi. Quand tous les membres appropriés sont remplis, nous envoyons le message TVM_INSERTITEM au tree view control pour y ajouter l'Item racine.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hParent,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hParent,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.hInsertAfter,TVI_LAST</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.pszText,offset Child1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvinsert.u.item.pszText,offset Child2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_INSERTITEM,0,addr tvinsert</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Après que l'Item racine ait été rajouté, nous pouvons y attacher les Childs Items. Le membre hParent est maintenant rempli de l'handle de l'Item parent. Et nous emploierons des images identiques dans l 'image list' donc nous ne touchons plus aux membres iImage et iSelectedImage.</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_NOTIFY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov edi,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+assume edi:ptr NM_TREEVIEW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if [edi].hdr.code==TVN_BEGINDRAG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_CREATEDRAGIMAGE,0,[edi].itemNew.hItem</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov hDragImageList,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_BeginDrag,hDragImageList,0,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragEnter,hwndTreeView,[edi].ptDrag.x,[edi].ptDrag.y</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SetCapture,hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov DragMode,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+assume edi:nothing</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Maintenant quand l'utilisateur essaye de déplacer un Item, le tree view control envoie le message WM_NOTIFY avec TVN_BEGINDRAG en tant que code. lParam est le pointer qui est sur la structure NM_TREEVIEW laquelle contient plusieurs informations dont nous avons besoin, ainsi nous mettons sa valeur dans edi et employons edi comme pointer pour la structure NM_TREEVIEW. 'assume edi:ptr NM_TREEVIEW' est une façon de dire à MASM de traiter edi en tant que pointer sur la structure NM_TREEVIEW. Nous créons alors une image de traînée en envoyant TVM_CREATEDRAGIMAGE au tree view control. Il renvoie l'handle de l 'image list' nouvellement créé avec une image de traînée à l'intérieur. Nous appelons ImageList_BeginDrag pour définir le point chaud de l'image de traînée. Alors nous passons à l'opération de traînée en appelant ImageList_DragEnter. Cette fonction affiche l'image de traînée à l'emplacement indiqué dans la fenêtre indiquée. Nous employons la structure ptDrag qui est un membre de la structure NM_TREEVIEW en tant que point de départ où l'image de traînée doit être placée au commencement. Après ça, nous capturons l'entrée souris et nous (activons) le flag pour indiquer que nous passons désormais en mode Drag (traînée).</font></font></font>
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;
+.elseif uMsg==WM_MOUSEMOVE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if DragMode==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+and eax,0ffffh</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ecx,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+shr ecx,16</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvhit.pt.x,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov tvhit.pt.y,ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragMove,eax,ecx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragShowNolock,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_HITTEST,NULL,addr tvhit</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax!=NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_DROPHILITE,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragShowNolock,TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Maintenant nous nous concentrons sur WM_MOUSEMOVE. Quand l'utilisateur traîne l'image, notre fenêtre parente reçoit des messages WM_MOUSEMOVE. En réponse à ces messages, nous mettons à jour la position de l' image de traînée avec ImageList_DragMove. Après ça, nous vérifions si l'image de traînée passe au-dessus d'un Item. Nous faisons ça en envoyant le message TVM_HITTEST au tree view control. 
+ISi l'image de traînée passe par dessus d'un autre Item, nous reprenons le contrôle de notre Item en envoyant le message TVM_SELECTITEM avec le flag TVGN_DROPHILITE (pour dire que c'est l'Item Drag and Drop qui nous intéresse et pas l'autre) au tree view control. Pendant cette opération, nous cachons l'image de traînée pour qu'elle ne laisse pas de taches dégueulasses sur le tree view control.
+<ul><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;
+.elseif uMsg==WM_LBUTTONUP</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if DragMode==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_DragLeave,hwndTreeView</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_EndDrag</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ImageList_Destroy,hDragImageList</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_GETNEXTITEM,TVGN_DROPHILITE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_CARET,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke SendMessage,hwndTreeView,TVM_SELECTITEM,TVGN_DROPHILITE,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke ReleaseCapture</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov DragMode,FALSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b></ul>
+<font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>Quand l'utilisateur relâche le bouton gauche de la souris, l'opération de traînée se termine. Nous sortons du mode traînée en appelant ImageList_DragLeave, suivi par ImageList_EndDrag et ImageList_Destroy.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><font face="Arial,Helvetica"><font color="#FFFFFF"><font size=-1>[<b><a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly Homepage</a></b>]</font></font></font></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

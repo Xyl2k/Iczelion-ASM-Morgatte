@@ -1,0 +1,487 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Iczelion">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 Assembly Tutorial 11: More about Dialog Box</title>
+</head>
+<body STYLE="#text-align:justify;" text="#FFFFFF" bgcolor="#000000" link="#FFFF00" vlink="#C0C0C0" alink="#C0FFC0">
+
+<center>
+<h1>
+<font face="Arial,Helvetica"><font color="#999900">Tutorial 11: Encore Plus à Propos<BR>Des Boîtes de Dialogue</font></font></h1></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans ce Tutorial, nous allons en apprendre encore plus sur la boîte de dialogue. Plus spécialement, nous allons voir comment employer les boîtes de dialogue en tant que dispositifs d'entrée-sortie. Si vous avez lu le tutorial précédent, celui-ci ne sera qu'une brise. Il s'agit ici d'une une modification mineure pour pouvoir utiliser les boîtes de dialogue comme des adjonctions à notre fenêtre principale. Aussi dans ce tutorial, nous allons apprendre à utiliser les boîtes de dialogue comme elles sont utilisées normalement.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Downloadez les exemples de DialogBox <a href="files/tut11-1.zip">ici</a> et <a href="files/tut11-2.zip">ici</a>.
+Downloadez l'exemple de DialogBox couramment utilisée <a href="files/tut11-3.zip">ici</a>.</font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Théorie:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vite fait, voici ce qui doit être dit à propos de l'emploi des boîtes de dialogue en tant que dispositifs d'entrée-sortie de notre programme. Comme d'habitude, notre programme crée la fenêtre principale puis quand vous voulez montrer la DialogBox, appelez juste CreateDialogParam ou bien DialogBoxParam. Avec l'appel de DialogBoxParam, vous n'avez rien de plus à faire, traitez seulement les messages dans la procédure de la boîte de dialogue. Avec CreateDialogParam, vous devez insérer un 'Call IsDialogMessage' dans la boucle de message pour permettre à l'administrateur de la boîte de dialogue de gérer la navigation du clavier dans votre boîte de dialogue à votre place. Puisque ces deux cas sont rares, je ne mettrai pas le code source ici. Vous pouvez télécharger les exemples et les examiner vous-même, <a href="files/tut11-1.zip">ici</a>
+ et <a href="files/tut11-2.zip">ici</a>.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Continuons avec les boîtes de dialogue communes (habituellement utilisées). Windows possède des DialogBox prédéterminées pour que vos applications puissent les utiliser. Ces boîtes de dialogue existent pour servir d'interface utilisateur standardisée. Il s'agit des fichiers comme, l'imprimante, la couleur, la fonte et des boîtes de dialogue de recherche. Vous devez les employer autant que possible. Ces boîtes de dialogue prédéfinies résident dans comdlg32.dll. Pour les employer, vous devez vous lier avec comdlg32.lib. Vous créez ces boîtes de dialogue en appelant des fonctions appropriées dans la bibliothèque de DialogBox communes. Pour ouvrir le fichier de dialogue, c'est GetOpenFileName, pour le sauvegarder en tant que dialogue on se sert de GetSaveFileName, pour la boîte de dialogue de l'imprimante c'est PrintDlg et cetera. Chacune de ces fonctions utilise un pointeur comme paramètre dans sa structure. Vous devez les regarder dans la référence Win32 API. Dans ce Tutorial, je on va voir comment créer et employer une DialogBox servant à ouvrir des fichiers.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Voici ci-dessous le prototype de fonction de GetOpenFileName :</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<blockquote><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>GetOpenFileName
+proto lpofn:DWORD</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Vous pouvez voir qu'il ne reçoit qu'un seul paramètre, un pointeur sur la structure OPENFILENAME. La valeur de retour TRUE(VRAI) signifie que l'utilisateur vient de choisi un fichier pour l'ouvrir, sinon la valeur en retour est FALSE(FAUX). Voyons la structurent d'OPENFILENAME maintenant.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<blockquote><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>OPENFILENAME&nbsp;
+STRUCT</font></font></font></b>
+<blockquote><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lStructSize
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;hwndOwner
+HWND&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;hInstance
+HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrFilter
+LPCSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrCustomFilter
+LPSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nMaxCustFilter
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nFilterIndex
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrFile
+LPSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nMaxFile
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrFileTitle
+LPSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nMaxFileTitle
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrInitialDir
+LPCSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrTitle
+LPCSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;Flags&nbsp;
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nFileOffset
+WORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;nFileExtension
+WORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpstrDefExt
+LPCSTR&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lCustData
+LPARAM&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpfnHook
+DWORD&nbsp; ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;lpTemplateName
+LPCSTR&nbsp; ?</font></font></font></b></blockquote>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>OPENFILENAME&nbsp;
+ENDS</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>On va voir la signification des membres fréquemment employés.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>&nbsp;
+<center><table BORDER WIDTH="100%" >
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>lStructSize</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Taille de la structure d'OPENFILENAME, en octets.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hwndOwner</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>handle de la boîte de dialogue qui sert à ouvrir des fichiers.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Instance Handle de l'application qui crée la 'boîte de dialogue qui sert à ouvrir des fichiers'.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>lpstrFilter</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Sert à filtrer le type de chaînes de caractères à ouvrir. Il faut 2 NULL pour terminer cette instruction. La première chaîne de caractères est la description (donc le texte). La deuxième c'est le type de filtre. Par exemple, dans un répertoire on peut sélectionner tous les dossiers  ou bien que les .exe ou bien seulement les .zip……etc:</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;
+<FONT COLOR="#FFFF00">FilterString&nbsp;&nbsp; db "All Files (*.*)",0, "*.*",0</FONT></font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<FONT COLOR="#FFFF00">db "Text Files (*.txt)",0,"*.txt",0,0</FONT></font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Remarquez bien que c'est la deuxième chaîne de caractères (pour chaque ligne) qui en réalité sert à Windows à filtrer les fichiers. Donc vous êtes obligés de mettre un 0 supplémentaire à la fin de la chaîne de caractères du filtre pour en indiquer sa fin.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>nFilterIndex</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Indique quelle [paire de chaîne de caractères de] filtre sera utilisée par défaut dans la DialogBox qui sert à ouvrir les fichiers. Ce sera le 1, pour la première paire "All Files (*.*)", le 2 pour la deuxième paire "Text Files (*.txt)" etc. Ainsi dans notre exemple, si nous spécifions nFilterIndex en tant que 2, le deuxième modèle, "*.txt" sera employé.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>lpstrFile</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le pointeur du buffer qui contient le nom de fichier qu'on a l'habitude d'initialiser dans la boîte d'édition de notre  DialogBox (ici c'est le pointeur qui pointe sur le texte " ALL FILES ". Le pointeur doit avoir une longueur d'au moins 260 octets.&nbsp;</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après que l'utilisateur ait choisit un fichier pour l'ouvrir, le nom de ce fichier ainsi que le chemin (Patch) complète où il est stocké, sont gardés dans ce buffer pstrFile. Vous pourrez en extraire l'information plus tard.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>nMaxFile</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>La taille de buffer lpstrFile.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>lpstrTitle</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Pointeur du titre de la DialogBox qui sert à ouvrir les fichiers. (donc c'est le titre).</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Flags</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Détermine le style et les caractéristiques de la boîte de dialogue.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>nFileOffset</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après que l'utilisateur ait choisi un fichier pour l'ouvrir, ce membre contient le n° du premier caractère du nom du fichier réel. Par exemple, si le nom complète avec son chemin est "c:\Windows\system<FONT COLOR="#FFFF00"><B>\</B></FONT>lz32.dll", ce membre contiendra la valeur 18.</font></font></font></td>
+</tr>
+
+<tr>
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>nFileExtension</font></font></font></td>
+
+<td><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Après que l'utilisateur ait choisi un fichier pour l'ouvrir, ce membre contient le numéro du premier caractère de l'extension du fichier. Ici c'est 23</font></font></font></td>
+</tr>
+</table></center>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=+0>Exemple:</font></font></font></h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le programme suivant montre une boîte de dialogue servant à ouvrir des fichiers. Pour en ouvrir un, l'utilisateur doit choisir le Fichier avec le sous-menu 'OPEN'. Quand l'utilisateur choisit un fichier dans la DialogBox, le programme affiche une MessageBox montrant le nom complet, à savoir le nom du fichier avec l'extension de ce fichier.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.386</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.model
+flat,stdcall</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>option
+casemap:none</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+proto :DWORD,:DWORD,:DWORD,:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\windows.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\user32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\kernel32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>include
+\masm32\include\comdlg32.inc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\user32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\kernel32.lib</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>includelib
+\masm32\lib\comdlg32.lib</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.const</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_OPEN
+equ 1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>IDM_EXIT
+equ 2</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MAXSIZE
+equ 260</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>OUTPUTSIZE
+equ 512</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ClassName
+db "SimpleWinClass",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>AppName&nbsp;
+db "Our Main Window",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>MenuName
+db "FirstMenu",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ofn&nbsp;&nbsp;
+OPENFILENAME &lt;></font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FilterString
+db "All Files",0,"*.*",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "Text Files",0,"*.txt",0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>buffer
+db MAXSIZE dup(0)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>OurTitle
+db "-=Our First Open File Dialog Box=-: Choose the file to open",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FullPathName db "The Full Filename with Path is: ",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FullName db "The Filename is: ",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>ExtensionName db "The Extension is: ",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>OutputString db OUTPUTSIZE dup(0)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CrLf db 0Dh,0Ah,0</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.data?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>hInstance HINSTANCE ?</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>CommandLine LPSTR ?</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetModuleHandle, NULL</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  mov&nbsp;&nbsp;&nbsp; hInstance,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke GetCommandLine<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;mov CommandLine,eax</font></font></font></b> <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke WinMain, hInstance,NULL,CommandLine, SW_SHOWDEFAULT</font></font></font></b> 
+  <br>
+  <b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp; 
+  invoke ExitProcess,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font> 
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain proc hInst:HINSTANCE,hPrevInst:HINSTANCE,CmdLine:LPSTR,CmdShow:DWORD</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL wc:WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL msg:MSG</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+LOCAL hwnd:HWND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbSize,SIZEOF WNDCLASSEX</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.style, CS_HREDRAW or CS_VREDRAW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpfnWndProc, OFFSET WndProc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbClsExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.cbWndExtra,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+push&nbsp; hInst</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+pop&nbsp;&nbsp; wc.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hbrBackground,COLOR_WINDOW+1</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszMenuName,OFFSET MenuName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.lpszClassName,OFFSET ClassName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadIcon,NULL,IDI_APPLICATION</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIcon,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hIconSm,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke LoadCursor,NULL,IDC_ARROW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; wc.hCursor,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke RegisterClassEx, addr wc</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke CreateWindowEx,WS_EX_CLIENTEDGE,ADDR ClassName,ADDR AppName,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+CW_USEDEFAULT,300,200,NULL,NULL,\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+hInst,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp; hwnd,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke ShowWindow, hwnd,SW_SHOWNORMAL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+invoke UpdateWindow, hwnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.WHILE TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetMessage, ADDR msg,NULL,0,0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.BREAK .IF (!eax)</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke TranslateMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DispatchMessage, ADDR msg</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDW</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+mov&nbsp;&nbsp;&nbsp;&nbsp; eax,msg.wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WinMain
+endp</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+proc hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.IF uMsg==WM_DESTROY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke PostQuitMessage,NULL</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSEIF uMsg==WM_COMMAND</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov eax,wParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if ax==IDM_OPEN</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.lStructSize,SIZEOF ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hwndOwner</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFilter, OFFSET FilterString</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFile, OFFSET buffer</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.nMaxFile,MAXSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.Flags, OFN_FILEMUSTEXIST or \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_PATHMUSTEXIST or OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrTitle, OFFSET OurTitle</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetOpenFileName, ADDR ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,OFFSET FullPathName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,ofn.lpstrFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset CrLf</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset FullName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,ofn.lpstrFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor&nbsp; ebx,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; bx,ofn.nFileOffset</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset CrLf</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset ExtensionName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,ofn.lpstrFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor ebx,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; bx,ofn.nFileExtension</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add eax,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hWnd,OFFSET OutputString,ADDR AppName,MB_OK</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RtlZeroMemory,offset OutputString,OUTPUTSIZE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.else</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DestroyWindow, hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.endif</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ELSE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke DefWindowProc,hWnd,uMsg,wParam,lParam</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+.ENDIF</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+xor&nbsp;&nbsp;&nbsp; eax,eax</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;
+ret</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>WndProc
+endp</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;end
+start</font></font></font></b>
+<br>
+<hr WIDTH="100%">
+<h3>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Analyse:</font></font></font></h3>
+<b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov ofn.lStructSize,SIZEOF ofn</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hWnd</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hwndOwner</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push hInstance</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ofn.hInstance</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous remplaçons les membres ordinaires par des structures ofn.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFilter, OFFSET FilterString</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Ce FilterString est le filtre du nom de fichier que nous définissons comme suit :</font></font></font>
+<blockquote><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>FilterString
+db "All Files",0,"*.*",0</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "Text Files",0,"*.txt",0,0</font></font></font></b></blockquote>
+<font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Remarquez que les quatre chaînes de caractères sont terminées par un Zéro. La première chaîne est la description de la chaîne suivante (EX : ''ALL FILES est la description de *.*''). Le modèle réel est la 2e chaîne de caractères, dans notre cas ce sont *. * et *.txt. En réalité nous pouvons prendre n'importe quel modèle d'extension. exemple : *.wavwav . Nous DEVONS mettre un zéro supplémentaire après la dernière chaîne de caractères pour à montrer que c'est la fin de la chaîne du filtre. N'oubliez  surtout pas ça, sinon votre DialogBox se comportera étrangement.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrFile, OFFSET buffer</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.nMaxFile,MAXSIZE</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous indiquons où la boîte de dialogue mettra le nom du fichier que l'utilisateur vient de choisir. Notez que nous devons spécifier sa taille dans le membre nMaxFile. Plus tard, nous pourrons extraire le nom du fichier contenu dans ce buffer.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.Flags, OFN_FILEMUSTEXIST or \</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_PATHMUSTEXIST or OFN_LONGNAMES or\</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OFN_EXPLORER or OFN_HIDEREADONLY</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Flags indique les caractéristiques de la boîte de dialogue.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Les 'flags' (les drapeaux) OFN_FILEMUSTEXIST et OFN_PATHMUSTEXIST exigent que le nom du fichier et le chemin que l'utilisateur tape dans la zone d'édition DOIVENT exister.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>le 'flag' OFN_LONGNAMES dit à la boîte de dialogue de montrer des noms de fichier longs. (et non pas des trucs du genre 'nomtropl~1.exe')</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le flag OFN_EXPLORER indique que l'apparition de la boîte de dialogue doit être semblable à celle de l'Explorer Windows.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Le flag OFN_HIDEREADONLY cache la 'case à cocher : read-only ' de la boîte de dialogue.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Il y a beaucoup encore d'autres flags que vous pouvez employer. Consultez votre référence Win32 API.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; ofn.lpstrTitle, OFFSET OurTitle</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>C'est le titre de la boîte de dialogue qui sert à ouvrir des fichiers.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke GetOpenFileName, ADDR ofn</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Appelle la fonction GetOpenFileName. Il passage le pointer à la structure 'ofn' en tant que son paramètre.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>À partir d'ici, la boîte de dialogue qui ouvre les fichiers, est affichée à l'écran. La fonction ne retournera pas avant que l'utilisateur ne choisisse un fichier pour l'ouvrir ou bien qu'il ne presse le bouton ANNULER ou FERMER de la boîte de dialogue.</font></font></font>
+<br><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Il renverra la valeur TRUE(VRAI) dans eax si l'utilisateur choisit un fichier pour l'ouvrir. Sinon, il retournera FALSE(FAUX).</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+.if eax==TRUE</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,OFFSET FullPathName</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,ofn.lpstrFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset CrLf</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,offset FullName</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Dans le cas où l'utilisateur choisit un fichier pour l'ouvrir, nous préparons une chaîne de caractère pour qu'elle soit affichée dans une MessageBox. Nous réservons un bloc de mémoire dans la variable OutputString puis ensuite nous employons la fonction API, lstrcat, pour enchaîner ensembles les chaîne de caractères . Pour faire apparaître les chaînes sur plusieurs lignes, nous devons séparer chaque ligne avec un retour chariot.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; eax,ofn.lpstrFile</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+push ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+xor&nbsp; ebx,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+mov&nbsp; bx,ofn.nFileOffset</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add&nbsp; eax,ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+pop&nbsp; ebx</font></font></font></b>
+<br><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke lstrcat,offset OutputString,eax</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Les susdites lignes exigent quelques explications. nFileOffset contient le n° dans l'ofn.lpstrFile (ce n° c'est son positionnement). Mais vous ne pouvez pas les ajouter ensemble directement puisque nFileOffset est une variable de TAILLE 'WORD' et lpstrFile est de TAILLE 'DWORD'. Il faut donc mettre la valeur de nFileOffset dans le mot bas (le mot de poids faible) de ebx et l'ajouter à la valeur de lpstrFile.</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke MessageBox,hWnd,OFFSET OutputString,ADDR AppName,MB_OK</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous affichons la chaîne de caractères dans la MessageBox (boîte de message).</font></font></font><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+invoke RtlZerolMemory,offset OutputString,OUTPUTSIZE</font></font></font></b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1></font></font></font>
+<p><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>Nous devons *effacer* l'OutputString avant que nous ne puissions remplir une autre chaîne de caractères. Donc nous employons la fonction RtlZeroMemory pour faire le travail.</font></font></font>
+<br>
+<hr WIDTH="100%">
+<center><b><font face="Arial,Helvetica"><font color="#CCCCCC"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

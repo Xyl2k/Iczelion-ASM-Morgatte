@@ -1,0 +1,310 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [en] (Win95; I) [Netscape]">
+   <title>Iczelion's Win32 ASM tutorial 2: MessageBox</title>
+</head>
+<body text="#CCCCCC" bgcolor="#000000" link="#FFFF33" vlink="#800080" alink="#0000FF">
+
+<center>
+<h1>
+<font face="Arial"><font color="#999900">Tutorial 2: MessageBox</font></font></h1></center>
+<DIV STYLE="text-align:justify;">
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Dans ce tutorial, nous créerons un programme Windows 
+entièrement fonctionnel qui montre une MessageBox (boîte de message) disant "Win32 assembly is great!".
+</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Téléchargez le fichier d'exemple
+<a href="files/tut02.zip"> ici</a>.</font></font></font>
+<h3>
+<font face="Arial"><font color="#66FFFF">Théorie:</font></font></h3>
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Windows met à notre disposition de multiples ressources 
+pour les programmes Win (programmes fonctionnant sous windows). La plus importante c'est l'API (Applications Programmant l'Interface). Les API 
+représentent une collection énorme de fonctions très utiles qui résident dans Windows lui-même, prêtes pour 
+l'utilisation de n'importe quels autres programmes Win (programmes tournant sous Windows contrairement à 
+ceux sous Dos). Ces fonctions sont stockées dans plusieurs bibliothèques dynamiquement liées (les DLLs) 
+comme kernel32.dll, user32.dll et gdi32.dll. Kernel32.dll Contient les fonctions API qui traitent avec la 
+mémoire et sa gestion. User32.dll contrôle les interfaces dont se sert votre programme. Gdi32.dll est 
+responsable d'opérations graphiques.  "Les trois principales " sont là, d'autre DLLs peuvent être employées 
+pour votre programme, pourvu que vous ayez assez d'informations sur les fonctions API désirées. 
+</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Les programmes Win se lient dynamiquement avec 
+ces DLLs, c'est-à-dire : Les codes des fonctions API ne sont pas inclus dans le programme Win  exécutable. 
+Dans votre programme, pendant son exécution,  pour accéder à l'API désirée, vous devez déclarer cette 
+information dans le fichier exécutable. L'information est dans une bibliothèque d'importation. Vous devez 
+lier vos programmes avec les bibliothèques d'importation correctes ou ils ne seront pas capables de 
+retrouver la fonction de l'API souhaitée.</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Quand un programme Win est chargé dans la 
+mémoire, Windows lit l'information stockée dans le programme. Cette information inclut les noms des 
+fonctions et les DLLs où résident ces fonctions. Ex : le DLL User32.dll  contient la fonction MessageBox 
+(ainsi qu'une multitude d'autres fonctions). L'information que cherchera Windows dans votre exécutable ce 
+sera quelque chose comme " Call   USER32 ! MessageBox ". Dès que Windows trombera sur un tel renseignement 
+dans votre programme, il chargera le DLL et exécutera la fonction. 
+</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Il y a deux catégories de fonctions API : les 
+uns pour ANSI et les autres pour Unicode. Les noms des fonctions API pour ANSI sont suivis du suffixe "A", 
+ex : MessageBoxA. Ceux pour Unicode ont le suffixe "W". Windows 95 traite naturellement ANSI, et Windows NT 
+Unicode. </font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>D'habitude on se sert de la convention ANSI, qui 
+pour l'ensemble des caractères proposés par votre ordinateur est terminés par le caractère NULL. ANSI 
+représente chaque caractère sur 1 octet. Il est suffisant pour les langues européennes, mais il ne peut pas 
+manipuler la plupart des langues orientales qui ont plusieurs milliers de caractères uniques. C'est 
+pourquoi UNICODE entre en jeu. Un caractère UNICODE a une taille de 2 octets, ce qui lui permet d'avoir une 
+série de code de 65536 caractères uniques. 
+</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Mais la plupart du temps, vous emploierez un 
+fichier INCLUDE (*.inc) qui peut déterminer et choisir les fonctions API appropriées à votre plate-forme 
+suivant ce que doit faire votre programme. 
+Référez-vous juste aux noms de fonction API sans le suffixe.</font></font></font>
+<h3>
+<font face="Arial"><font color="#00CCCC">Example:</font></font></h3>
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Je vous ai présenté ci-dessous le squelette nu d'un 
+programme. Nous l'enrichirons plus tard.</font></font></font> 
+<p><b><font face="Arial"><font color="#FFFF99"><font size=-1>.386<br>
+  .model flat, stdcall</font></font></font></b> <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>.data</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>end start</font></font></font></b> 
+<p><font face="Arial"><font size=-1><font color="#CCCCCC">L'exécution commence à la première instruction 
+immédiatement au-dessous de l'étiquette </font><font color="#FFFF99">Start: <font color="#CCCCCC">
+Le programme s'exécutera instruction par l'instruction jusqu'à ce qu'une instruction de contrôle de 
+direction comme</font><font color="#FFFF99"> jmp</font><font color="#CCCCCC">,</font>
+<font color="#FFFF99">jne</font><font color="#CCCCCC">, </font><font color="#FFFF99">je</font>
+<font color="#CCCCCC">,</font><font color="#FFFF99">ret</font><font color="#CCCCCC"> Etc..soit trouvée.
+Ces instructions dirigent l'exécution vers d'autres lignes d'instructions. Quand le programme a besoin de 
+sortir de Windows pour se terminer, il doit appeler la fonction ExitProcess qui est une API de la DLL 
+Kernel32.dll. </font></font></font>
+<p><b><font face="Arial"><font color="#99FF99"><font size=-1>ExitProcess
+proto uExitCode:DWORD</font></font></font></b>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Ci dessus, ce type d'expression est appelé un 
+prototype de fonction. Un prototype de fonction définit les attributs d'une fonction pour ensuite 
+transformer cette expression (pseudo-assembler) en véritable assembler. Le format d'un prototype de 
+fonction est le suivant : </font></font></font>
+<p><b><font face="Arial"><font size=-1><font color="#CCCCCC">FunctionName
+PROTO </font><font color="#CCCC99">[ParameterName]</font><font color="#CCCCCC">:DataType,</font><font color="#CCCC99">[ParameterName]</font><font color="#CCCCCC">:DataType,...</font></font></font></b>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>En résumé, le mot-clé PROTO est précédé du nom de 
+la fonction puis suivi de la liste des paramètres, séparés par des virgules. Dans l'exemple ExitProcess ci-dessus, 
+il définit ExitProcess comme une fonction qui prend seulement un seul paramètre de type DWORD. Les 
+prototypes de fonctions sont très utiles quand vous employez la syntaxe d'appel de niveau haut :INVOKE. En plus, 
+le Linker vérifiera si vous avez correctement utilisé la fonction que vous invokez. En outre, il vérifiie 
+que ses paramètres ne sont pas oubliés.<BR>  
+Par exemple, si vous faites :</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>call ExitProcess</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Sans pousser un dword sur la pile (Push 0, avant 
+d'appeler la fonction ExitProcess), l'assembler ne sera pas capable de comprendre cette erreur à votre 
+place. Vous vous en apecevrez plus tard quand votre programme plantera. Mais si vous employez :</font></font></font>
+<p><font face="Arial"><font color="#FFFF99"><font size=-1>invoke ExitProcess</font></font></font>
+<p><font face="Arial"><font size=-1><font color="#CCCCCC">Le linker vous informera que vous avez oublié de 
+pousser un dword sur la pile évitant ainsi l'erreur. Je vous recommande donc d'employer.</font>
+<font color="#FFFF99"> invoke</font><font color="#CCCCCC">
+au lieu d'un simple 'Call'. La syntaxe d''Invoke' est la suivante :</font></font></font>
+<p><b><font face="Arial"><font color="#CC0000"><font size=-1>INVOKE&nbsp;
+expression [,arguments]</font></font></font></b>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>L'expression peut être le nom d'une fonction ou 
+bien un pointeur de fonction. Les paramètres sont séparés par des virgules.</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>La plupart des prototypes de fonction pour des 
+fonctions API sont tenus dans les fichiers nommés : INCLUDE. Si vous employez MASM32, ils seront dans le 
+dossier MASM32/INCLUDE. Les fichiers INCLUDE ont l'extension .inc et les prototypes de fonction pour un DLL 
+sont stockés dans le fichier .inc avec le même nom que le DLL. Par exemple, ExitProcess est exporté par 
+kernel32.lib donc le prototype de fonction pour ExitProcess est stocké dans kernel32.inc.</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Vous pouvez aussi créer des prototypes de fonction 
+pour vos propres fonctions. (HéHé ! ! !)</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Partout dans mes exemples, j'emploierai windows.inc 
+que vous pouvez télécharger à http://win32asm.cjb.net</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Maintenant revenons à ExitProcess, uExitCode est 
+la valeur du paramètre que vous voulez que votre programme renvoie à Windows après que celui-ci se termine. 
+Vous pouvez appeler ExitProcess comme cela :</font></font></font>
+<p><b><font face="Arial"><font color="#FFCC66"><font size=-1>invoke ExitProcess, 0</font></font></font></b>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Si vous placez cette ligne immédiatement après l'
+étiquette de commencement (ici on l'a appelée arbitrairement 'Start :', vous obtiendrez un programme win32 
+qui sortira immédiatement de Windows (pour revenir à ce que vous aviez à l'écran juste avant d'exécuter 
+votre programme), mais c'est néanmoins un programme valable.</font></font></font>
+<p><b><font face="Arial"><font color="#FFFF99"><font size=-1>.386</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>.model flat, stdcall</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>option casemap:none</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FF9999"><font size=-1>include \masm32\include\windows.inc</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FF9999"><font size=-1>include \masm32\include\kernel32.inc</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FF9999"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>.data</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>.code</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1>start:</font></font></font></b> 
+  <br>
+  <b><font face="Arial"><font color="#FF9999"><font size=-1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;invoke 
+  ExitProcess,0</font></font></font></b> <br>
+  <b><font face="Arial"><font color="#FFFF99"><font size=-1></font></font></font></b><b><font face="Arial"><font color="#FFFF99"><font size=-1>end 
+  start</font></font></font></b> 
+<p>L'option casemap:none indique à MASM de ne pas faire de différence entre les expressions ExitProcess et exiteprocess par exemple. 
+  <font face="Arial"><font size=-1><font color="#CCCCCC">Notez la nouvelle directive,</font>
+  <font color="#FFFF99"> include</font><font color="#CCCCCC">. Cette directive est suivie par le nom du 
+  fichier que vous voulez insérer à sa place. Dans cet exemple, quand MASM traite la ligne </font>
+  <font color="#FFFF99">include \masm32\include\windows.inc</font><font color="#CCCCCC">, Il ouvrira windows.inc 
+  qui est dans le dossier \MASM32\include et fera en sorte que son contenu (celui de windows.inc) soit collé 
+  dans votre programme win32. Il ne contient pas de prototype de fonction. windows.inc n'est en aucun cas 
+  complet(c'est compréhensif car on peut toujours y rajouter de nouvelles choses). Ce fichier 'windows.inc' 
+  qui regroupe tous mes fichiers.inc je l'appelle le fichier 'HUTCH'. Il sera constamment remis à jour. 
+  Vérifiez donc HUTCH de temps en temps sur ma page d'accueil pour des mises à jour.</font></font></font> <br>
+  <font face="Arial"><font color="#CCCCCC"></font></font></font>
+<p><font face="Arial, Helvetica, sans-serif" size="-1"><font color="#CCCCCC">Dans notre exemple ci-dessus, 
+nous appelons une fonction exportée par kernel32.dll, donc nous avons besoin d'inclure le prototype de fonction 
+de kernel32.dll. Ce fichier est kernel32.inc. Si vous l'ouvrez avec un éditeur de texte, vous 
+verrez que c'est plein de prototypes de fonction pour kernel32.dll. Si vous n'incluez pas kernel32.inc, 
+vous pouvez toujours appeler ExitProcess, mais seulement avec la syntaxe d'appel simple (Push 0 puis Call 
+ExitProcess). Vous ne serez pas capables d'</font><font color="#FFFF99">invoker</font><font color="#CCCCCC"> 
+  la function (ExitProcess). <BR><BR>*** Faisons le point : pour invoquer une fonction, vous devez mettre son prototype 
+  de fonction (qui est le contenu d'un des fichier *.inc) quelque part dans le code source. Dans notre exemple, si vous n'incluez pas kernel32.inc, 
+  vous pouvez définir le prototype de fonction pour ExitProcess n'importe où dans le code source au-dessus 
+  de la commande invokée et ça marchera. Les fichiers invokés doivent ici vous faciliter le travail en vous 
+  épargnant de taper les prototypes vous-même, donc employez-les chaque fois que vous le pouvez.</font></font> <br>
+  <font face="Arial"><font size=-1><font color="#CCCCCC">Maintenant nous rencontrons une nouvelle directive, </font>
+  <font color="#FFFF99">includelib</font><font color="#CCCCCC">. 
+  includelib ne fonctionne pas comme </font><font color="#FFFF99">include</font><font color="#CCCCCC">. 
+  C'est seulement une façon de dire à l'assembleur quelles bibliothèques d'importation sont employées par vos 
+  programmes. Quand l'assembleur voit une directive includelib, il met une commande de linker dans le 
+  fichier d'objet pour que le linker sache avec quelles bibliothèques d'importation votre programme a 
+  besoin de se lier. Vous n'êtes pas forcé d'employer includelib quoique. Vous pouvez spécifier les noms 
+  des bibliothèques d'importation dans la ligne de commande du linker, mais croyez-moi, c'est ennuyeux et 
+  la ligne de commande ne peut contenir que 128 caractères.</font></font></font> 
+<p><font face="Arial"><font size=-1><font color="#CCCCCC">Sauvegardez maintenant cet exemple sous le nom de</font>
+<font color="#FFFF99">msgbox.asm</font><font color="#CCCCCC">.</font><font color="#CCCCFF">
+</font><font color="#CCCCCC">Vérifiez le chemin d'accès du fichier ml.exe, et assemblez msgbox.asm avec: </font></font></font>
+<ul><font face="Arial"><font color="#66FF66"><font size=-1>ml&nbsp; /c&nbsp;
+/coff&nbsp; /Cp msgbox.asm</font></font></font>
+<li>
+<font face="Arial"><font size=-1><font color="#CC0000">/c</font><font color="#CCCCCC">
+dit à MASM de seulement assembler. ça n'appelle pas link.exe. La plupart du temps, on ne veut pas appeler 
+link.exe automatiquement puisque on doit exécuter quelques autres tâches avant l'appel de link.exe.</font></font></font></li>
+<br><font face="Arial"><font size=-1><font color="#CC0000">/coff </font><font color="#CCCCCC">dit à MASM de 
+créer le fichier .obj dans le format <font color="#FFFF99">COFF</font>. MASM emploie une variante du format 
+<font color="#FFFF99">COFF</font> (le Format de Fichier d'Objet Commun) qui est employé sous Unix comme son 
+propre objet et le format de fichier exécutable.</font></font></font>
+<br><font face="Arial"><font size=-1><font color="#CC0000">/Cp</font><font color="#CCCCCC">
+Dit à MASM de préserver les identificateurs d'utilisateur. Si vous employez les fichier du HUTCH (Les fichiers .inc), </font>
+vous pouvez mettre l'"</font><font color="#FFFF99">option casemap:none</font><font color="#CCCCCC">"
+en entête de votre source code. La directive <font color="#FFFF99">.model</font> réalise le même effet. </font></font></font></ul>
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Après que vous ayez assemblé avec succès msgbox.asm, 
+vous obtiendrez msgbox.obj. msgbox.obj est un fichier objet. Un fichier objet n'est pas loin d'un fichier 
+exécutable. Il contient les instructions et les données dans la forme binaire. Ce qui manque sont chacunes 
+des adresses fixes devant les instructions. Et ça, c'est le linker qui va faire le boulot.</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Alors allons y avec link:</font></font></font>
+<ul><font face="Arial"><font color="#66FF33"><font size=-1>link /SUBSYSTEM:WINDOWS&nbsp;
+/LIBPATH:c:\masm32\lib&nbsp; msgbox.obj</font></font></font></ul>
+
+<blockquote><font face="Arial"><font size=-1><font color="#CC0000">/SUBSYSTEM:WINDOWS</font><font color="#CCCCCC">&nbsp;
+Ça informe 'Link' de quel sorte d'exécutable est votre programme. </font></font></font>
+<br><font face="Arial"><font size=-1><font color="#CC0000">/LIBPATH:&lt;path
+to import library></font><font color="#CCCCCC"> Dit à Link où sont les bibliothèques d'importation. Si vous 
+utilisez MASM32, ils seront dans le dossier MASM32\LIB.</font></font></font></blockquote>
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Link lit dans le fichier *.obj et pose les adresses 
+des bibliothèques d'importation. Quand le processus est fini vous obtenez msgbox.exe.</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Maintenant vous arrivez à msgbox.exe. Continuez, 
+exécutez-le. Vous constaterez qu'il ne fait rien. Bien, nous n'y avons rien mis d'intéressant encore. 
+Mais c'est un programme de Windows néanmoins. Et regardez sa taille! Dans mon PC, il prend 1,536 octets.</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Maintenant, nous allons créer une boîte de message. 
+Son prototype de fonction est :</font></font></font>
+<p><b><font face="Arial"><font color="#FFCC00"><font size=-1>MessageBox
+PROTO hwnd:DWORD, lpText:DWORD, lpCaption:DWORD, uType:DWORD</font></font></font></b>
+<blockquote><font face="Arial"><font size=-1><font color="#FFFF99">hwnd</font><font color="#CCCCCC">
+est le 'handle' ou la poignée de la fenêtre parente</font><font color="#CCCCFF">.</font><font color="#CCCCCC">
+Vous pouvez vous imaginer qu'un 'Handle' est un numéro qui représente la fenêtre à laquelle vous faîtes 
+référence. Sa valeur n'a pas d'importante pour vous. Vous vous rappelez seulement qu'il représente la 
+fenêtre. Quand vous voulez faire quelque chose avec la fenêtre, vous devez vous y référer par son 'handle'.</font></font></font>
+<br><font face="Arial"><font size=-1><font color="#FFFF99">lpText</font><font color="#CCCCCC">
+est un pointeur sur le texte que vous voulez montrer en tant que Contenu de la MessageBox (boîte de message). 
+Cet pointeur représente réellement l'adresse de quelque chose. Cette adresse sera quelque chose du genre 00602154 
+et elle sinifie que le contenu qui sert à votre boite de message est en fait écrit à partir de la mémoire 00602154 
+(Cette adresse fait toujours parti des DATA) = Le Contenu De La MessageBox</font></font></font>
+<br><font face="Arial"><font size=-1><font color="#FFFF99">lpCaption</font><font color="#CCCCCC">
+est l'pointeur de texte qui sert cette fois à accèder à l'adresse du texte qui est le titre de la message box. = Le Titre De La MessageBox</font></font></font>
+<br><font face="Arial"><font size=-1><font color="#FFFF99">uType</font><font color="#CCCCCC">
+spécifie le type de message box utilisée. Par exemple quels sont les boutons quelle doit avoir, est-ce une MessageBox 
+simple ou bien une avec un signe particulier comme le Point d'Interrogation...</font></font></font></blockquote>
+<font face="Arial"><font color="#CCCCCC"><font size=-1>Modifions msgbox.asm pour inclure une MessageBox.</font></font></font>
+<br>&nbsp;
+<p><font face="Arial"><font color="#FFFF99"><font size=-1>.386</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>.model flat,stdcall</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>option casemap:none</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>include \masm32\include\windows.inc</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>include \masm32\include\kernel32.inc</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>includelib \masm32\lib\kernel32.lib</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>include \masm32\include\user32.inc</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>includelib \masm32\lib\user32.lib</font></font></font>
+<p><font face="Arial"><font color="#FFFF99"><font size=-1>.data</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>MsgBoxCaption&nbsp;
+db "Iczelion Tutorial No.2",0</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>MsgBoxText&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "Win32 Assembly is Great!",0</font></font></font>
+<p><font face="Arial"><font color="#FFFF99"><font size=-1>.code</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>start:</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>invoke MessageBox,
+NULL, addr MsgBoxText, addr MsgBoxCaption, MB_OK</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>invoke ExitProcess,
+NULL</font></font></font>
+<br><font face="Arial"><font color="#FFFF99"><font size=-1>end start</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Assemblez le fichier msgbox.asm et exécutez le 
+nouveau prog msgbox.exe. Vous verrez une boîte de message montrant le texte"Win32 Assembly is Great!".</font></font></font>
+<p><font face="Arial"><font color="#CCCCCC"><font size=-1>Regardons de nouveau le code source.</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Nous avons définis deux données terminées par un 
+zéro dans la section .data. Rappelez-vous que chaque données ANSI dans Windows doit être terminée par le 
+caractère NULL (0 hexadécimal).</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>Nous avons aussi employé deux constantes, le NULL 
+et MB_OK. Ces constantes sont définies dans windows.inc. Donc vous pouvez faire référence à leurs 
+noms à la place de leurs valeurs. Cela améliore la lisibilité De votre code source. </font></font></font>
+<br><font face="Arial"><font size=-1><font color="#CCCCCC">L'expression </font><font color="#FFFF99">ADDR</font><font color="#CCCCCC">
+est employée pour passer l'adresse d'une données ou d'un label à la fonction.</font><font color="#CCCCFF">
+</font><font color="#CCCCCC">C'est valable seulement dans le contexte de la directive 'invoke'. Vous ne 
+pouvez pas l'employer pour assigner l'adresse d'une donnée à un registre / variable, par exemple. Vous 
+devez employer </font><font color="#FFFF99">offset</font><font color="#CCCCCC">
+au lieu de 'ADDR' dans ce cas. Cependant, il y a quelques différences entre les deux :</font></font></font>
+<ol>
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF99">addr </font><font color="#CCCCFF">
+</font><font color="#CCCCCC">ne peut pas manipuler à l'avance la référence tandis qu'</font><font color="#CCCCFF">
+</font><font color="#FFFF99">offset</font><font color="#CCCCFF"> </font><font color="#CCCCCC">le peut.
+Par exemple, si la ligne où est rendu le programme, invoke un label qui est défini quelque part plus loin 
+dans le code source, ADDR ne marchera pas.</font><font color="#CCCCFF"></font></font></font></li>
+<blockquote><font face="Arial"><font color="#CCCCCC"><font size=-1>invoke
+MessageBox,NULL, addr MsgBoxText,addr MsgBoxCaption,MB_OK</font></font></font>
+<br><font face="Arial"><font color="#CCCCFF"><font size=-1>......</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>MsgBoxCaption&nbsp;
+db "Iczelion Tutorial No.2",0</font></font></font>
+<br><font face="Arial"><font color="#CCCCCC"><font size=-1>MsgBoxText&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+db "Win32 Assembly is Great!",0</font></font></font></blockquote>
+<font face="Arial"><font size=-1><font color="#CCCCCC">MASM indiquera une erreur. Si vous utilisez</font><font color="#CCCCFF"> </font>
+<font color="#FFFF99">offset</font><font color="#CCCCCC">
+au lieu de</font><font color="#CCCCFF"> </font><font color="#FFFF99">addr</font><font color="#CCCCFF">
+</font><font color="#CCCCCC">dans ce petit bout de code, alors MASM l'assemblera avec succès.</font></font></font>
+<li>
+<font face="Arial"><font size=-1><font color="#FFFF99">addr</font><font color="#CCCCFF">
+</font><font color="#CCCCCC">peut manipuler des variables locales tandis qu'</font><font color="#FFFF99">
+offset</font><font color="#CCCCFF"> </font><font color="#CCCCCC">ne le peut pas. </font><font color="#CCCCFF">.
+</font><font color="#CCCCCC">Une variable locale est seulement un petit espace réservé sur la pile. Vous ne 
+connaîtrez seulement son adresse que le temps de l'exécution. </font><font color="#FFFF99">offset</font><font color="#CCCCCC">
+est interprété pendant le déroulement du programme par l'assembleur. Donc il est naturel qu' </font><font color="#FFFF99">offset</font><font color="#CCCCCC"> 
+ne travaille pas avec des variables locales. </font><font color="#FFFF99">addr</font><font color="#CCCCCC">
+est capable de manipuler des variables locales grâce au fait que l'assembleur vérifie d'abord si la variable mentionnée par </font><font color="#FFFF99">addr</font>
+<font color="#CCCCCC">est globale ou locale. Si c'est une variable globale, il met l'adresse de cette variable 
+dans le fichier d'objet. À cet égard, il travaille comme </font><font color="#FFFF99">offset</font><font color="#CCCCCC">. 
+Si c'est une variable locale, il produit un ordre d'instruction qu'il appelle en réalité avant la fonction : </font><font color="#CCCCFF"></font></font></font></li>
+<blockquote><font face="Arial"><font color="#999900"><font size=-1>lea
+eax, LocalVar</font></font></font>
+<br><font face="Arial"><font color="#999900"><font size=-1>push eax</font></font></font></blockquote>
+<p><br><font face="Arial"><font color="#CCCCCC"><font size=-1>Puisque 'lea' peut déterminer l'adresse d'un 
+label pendant l'exécution, ça fonctionne tès bien.</font></font></font></ol>
+<hr WIDTH="100%">
+<center><b><font face="Arial"><font color="#006600"><font size=-1>[<a href="http://win32asm.cjb.net">Iczelion's
+Win32 Assembly HomePage</a>]</font></font></font></b></center></DIV>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</body>
+</html>

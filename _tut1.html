@@ -1,0 +1,171 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="Author" CONTENT="Iczelion">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.04 [en] (WinNT; I) [Netscape]">
+   <TITLE>Iczelion's Win32asm tutorial part 1: The Basic</TITLE>
+</HEAD>
+<BODY TEXT="#FFFFFF" BGCOLOR="#000000" LINK="#FF0000" VLINK="#800080" ALINK="#0000FF">
+<CENTER>
+  <H1> <font color="#3333FF" face="verdana">Tutorial 1 : les bases </font></H1>
+</CENTER>
+<DIV STYLE="text-align:justify;">
+<font color="#CCCCCC" face="verdana" size="2">Ce tutorial suppose 
+que le lecteur sache comment employer MASM. Si vous n'êtes pas familiers avec MASM, téléchargez 
+<a href="files/win32asm.exe">win32asm.exe</a> et étudiez le texte à l'intérieur du ZIP avant 
+la suite des Tutoials. Bon. Vous êtes maintenant prêts. On y va!  
+</font> 
+<H3> <font color="#CC0000" face="verdana">Théorie:</font></H3>
+<p><font color="#CCCCCC" face="verdana" size="2">Les  programmes Win32 fonctionnent en mode protégé 
+depuis le 80286. Mais le 80286 c'est maintenant de l'histoire ancienne. Donc nous devons seulement nous 
+intéresser au 80386 et à ses descendants. Windows dirigent chaque programme Win32 séparément. Ceci 
+signifie que chaque programme Win32 aura à sa disposition ses propres espaces de mémoire. Cependant, 
+cela ne signifie pas que chaque programme win32 a 4GB de mémoire physique, mais seulement que le 
+programme peut adresser n'importe quelle adresse dans cette gamme. Windows fera tout le nécessaire pour 
+adresser  les vraies références (physiques) du programme aux adresses (mémoires) valables 00401000… qu'il utilise. 
+Bien sûr, le programme doit respecter les règles de Windows, autrement il causera une Erreur de Protection 
+Générale tant redoutée. Chaque programme est seul dans son espace d'adresse. C'est la différence avec les 
+programmes Win16. Tous les programmes Win16 peuvent *malheureusement plus ou moins se chevaucher* les uns 
+les l'autres. Mais pas sous Win32. Ces gardes fous réduisent la chance d'une écriture du code d'un 
+programme par dessus les données d'un autre.</font> 
+<font face="verdana" size="2" color="#CCCCCC"><BR>
+  Le modèle de mémoire est aussi résolument différent des vieux jours du monde du 16 bits. Désormais, 
+  sous Win32, nous ne sommes plus concernés par le modèle de mémoire en plusieurs segments! 
+  (0001.xxxx puis 0002.xxxx puis 0003.xxxx ….)Il y a seulement un seul modèle de mémoire : le modèle de 
+  mémoire uniforme (Flat). Il n'y a plus de segments de plus 64Ko (différence *.com / *.exe). La mémoire 
+  est un seul espace continu. Ça veut dire aussi que vous n'avez plus besoin de jouer avec les différents 
+  registres concernant les segments [ES et SS]. Vous pouvez employer n'importe quel registre de segment 
+  pour adresser n'importe quel point dans l'espace de mémoire (ouf !). C'est une GRANDE aide pour les 
+  programmeurs. C'est ce qui fait de l'assembleur Win32 une programmation aussi facile que le C.<br>
+  Quand vous programmez sous Win32, vous devez respecter quelques règles importantes. Une règle{*Majeure*} 
+  est que Windows emploie lui-même <FONT COLOR="#FF0000">ESI</FONT>, <FONT COLOR="#FF0000">EDI</FONT>, 
+  <FONT COLOR="#FF0000">EBP</FONT> et <FONT COLOR="#FF0000">EBX</FONT> et les valeurs de ses registres changent, en même 
+  temps qu'une autre application tourne en parallèle avec Windows. Rappelez-vous donc cette règle
+  {*Primordiale*} d'abord : si vous employez chacun de ces quatre registres à l'intérieur d'une procédure, 
+  n'oubliez jamais de les reconstituer{*rétablir*} avant le contrôle de retour à Windows. L'exemple évident
+   sont les Call qui appellent une API de Windows. Cela ne signifie pas que vous ne pouvez pas employer ces 
+   quatre registres, vous le pouvez. Mais seulement que vous devez rétablir ces registres après un call.</font></p>
+<H3> <font color="#CC0000" face="verdana">Contenu:</font></H3>
+<p><font color="#999999" face="verdana" size="2">Voici le squelette de n'importe quel programme. Si vous ne comprenez 
+pas quelques-uns des codes, ne paniquez pas.  J'expliquerai chacun d'entre eux plus tard.</font></p>
+<p><font color="#669999" face="verdana" size="2"><b>.386</b></font> <font color="#669999" size="2" face="verdana"><b><BR>
+  .MODEL Flat, STDCALL <BR>
+  .DATA <BR>
+  &nbsp;&nbsp;&nbsp; &lt;Vous initialisez les data> <BR>
+  &nbsp;&nbsp;&nbsp; ...... <BR>
+  .DATA? <BR>
+  &nbsp;&nbsp; &lt;Vous initialisez les data> <BR>
+  &nbsp;&nbsp; ...... <BR>
+  .CONST <BR>
+  &nbsp;&nbsp; &lt;Vous initialisez vos constantes> <BR>
+  &nbsp;&nbsp; ...... <BR>
+  .CODE <BR>
+  &nbsp;&nbsp; &lt;label> <BR>
+  &nbsp;&nbsp;&nbsp; &lt;Vous initialisez votre code(début du segment Code)> <BR>
+  &nbsp;&nbsp; ..... <BR>
+  &nbsp;&nbsp;&nbsp; end &lt;label> </b></font></p>
+<p><font face="verdana"><BR>
+  <font color="#CCCCCC" size="2">C'est tout! On va analyser le squelette de ce programme.</font></font> 
+</p>
+<P><font face="verdana"><B><FONT COLOR="#CC33CC" size="3">.386</FONT></B> <BR>
+  <B><font color="#808000" size="2"> C'est une directive d'assembleur, disant à l'assembleur d'employer  
+  le jeu d'instructions  du 80386. Vous pouvez aussi employer .486 .586 mais l'important c'est d'utiliser au 
+  minimum les fonctions à partir du .386. Il y a en réalité deux formes presque identiques pour chaque 
+  modèle de directive. .386/.386p.486/.486p. Ces versions "p" sont nécessaires seulement quand votre programme 
+  emploie des instructions privilégiées. Les instructions privilégiées sont des instructions réservées par 
+  le système du CPU / FONCTIONNEMENT en mode protégé. Elles peuvent seulement être employés par le code 
+  privilégié, comme les conducteurs de dispositif virtuels. La plupart du temps, votre programme 
+  travaillera dans le mode non-privilégié donc c'est presque sûr que vous n'emploierez pas les versions -p. 
+</font></B></font>
+<P><font face="verdana"><B><FONT COLOR="#CC33CC" size="3">.MODEL FLAT, STDCALL</FONT></B> 
+  <BR>
+  <B><font color="#CC33CC" size="2">.MODEL</font><font color="#808000" size="2"> 
+  est une directive d'assembleur qui spécifie le type de mémoire de votre programme. Sous Win32, il y a 
+  seulement un type, le modèle </font><font color="#3333FF" size="2"> </font><font color="#CC33CC" 
+  size="2">FLAT</font><font color="#808000" size="2"> (mémoire un en seul bloque). 
+  </font></B> <font size="2"><BR>
+  <B><FONT COLOR="#CC33CC">STDCALL</FONT><font color="#808000"> dit à MASM quel est l'ordre de passage des 
+  paramètres de la pile vers un Call. De " gauche à droite " ou " le droit à gauche " et aussi ça 
+  équilibrera l'encadrement de la pile après l'appel de la fonction. </font></B> <BR>
+  <B><FONT COLOR="#CC6600">Sous Win16, il y a deux types de convention d'appel, la convention   
+  </FONT><FONT COLOR="#CC33CC">C</FONT><FONT COLOR="#CC6600"> et le </FONT><FONT COLOR="#CC33CC">PASCAL</FONT></B> 
+  <BR>
+  <B><font color="#808000">La convention C passe les paramètres de la pile 
+  de droit à gauche, c'est-à-dire le paramètre extrême droit est poussé d'abord. L'interlocuteur est 
+  responsable du balancement de l'encadrement de pile après l'appel. Par exemple, pour appeler une fonction 
+  nommée foo (int first_param, int second_param, int third_param) dans la 'convention d'appel C', les codes 
+  d'asm ressembleront à cela :</font></B></font> 
+  </font>
+<BLOCKQUOTE><font face="verdana"><B><font color="#FFFF66" size="2">push&nbsp; 
+  [3e_paramètre]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  ; Pousse le 3e paramètre sur la pile</font></B> <font color="#FFFF66" size="2"><BR>
+  <B>push&nbsp; [2e_paramètre]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  ; Suivi par le second</B> <BR>
+  <B>push&nbsp; [1er_paramètre]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  ; Et du 1er</B> <BR>
+  <B>call&nbsp;&nbsp;&nbsp; Procédure_foo</B> <BR>
+  <B>add&nbsp;&nbsp;&nbsp; sp, 12&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+  ; La fonction appelante équilibre le remplissage de la pile</B></font></font></BLOCKQUOTE>
+<font face="verdana"><B><font color="#808000" size="2"> 
+la convention d'appel <font color="#CC33CC" size="2">PASCAL</font> est le contraire de la convention C. 
+elle passe les paramètres de la pile de gauche à droite et le Call est responsable de équilibre (de l'état) 
+de la pile après l'appel. 
+</font></B> <font size="2" color="#808000"><BR>
+<B>Win16 adopte la convention </B></font><font size="2"><B><FONT COLOR="#3333FF"> </FONT><FONT COLOR="#CC33CC">PASCAL</FONT>
+<font color="#808000">parce qu'il produit des codes plus petits. La convention C, est utile quand vous ne 
+savez pas combien de paramètres on passera à la fonction comme dans le cas de wsprintf (). Dans le cas de 
+wsprintf (), la fonction n'a aucune façon de déterminer à l'avance combien de paramètres seront préservés 
+sur la pile, donc on ne peut pas déterminer l'état de la pile. </font></B> 
+<BR>
+<B><FONT COLOR="#CC33CC">STDCALL<font color="#808000"> </font></FONT><font color="#808000">est l'hybride de 
+la Convention de Pascal et C. Il passe les paramètres de droit à gauche. La plate-forme Win32 emploie 
+exclusivement </font><FONT COLOR="#CC33CC">STDCALL</FONT><FONT COLOR="#808000"> 
+. Sauf dans un cas : wsprintf (). Vous devez employer la convention C avec wsprintf ()</FONT></B> 
+</font></font> 
+<P><font face="verdana"><B><FONT COLOR="#CC33CC" size="3">.DATA</FONT></B> <font size="3"><BR>
+  <B><FONT COLOR="#CC33CC">.DATA?</FONT></B> <BR>
+  <B><FONT COLOR="#CC33CC">.CONST</FONT></B> <BR>
+  <B><FONT COLOR="#CC33CC">.CODE</FONT></B> </font><BR>
+  <B><font color="#808000" size="2">Ces quatre directives servent a appeler la section (00401000……). 
+  Vous n'avez pas de segments (0001.xxxx, 0002.xxxx,…) dans Win32, vous vous souvenez ? Mais vous pouvez 
+  diviser votre espace d'adresse (00401000 à 00620000 par exemple) en sections logiques, exemple : " le 
+  code de 00401000 à 005F0000 " et "les DATA de 005F0000 à 00620000 ". Le début d'une section dénote la fin 
+  de la section précédente. Il existe deux groupes de section : données et code. Les sections de données 
+  sont divisées en 3 catégories : </font></B> </font>
+<UL>
+  <LI> <font face="verdana" size="2" color="#CCCCCC"><B><font color="#FFE082">.DATA</font>&nbsp;&nbsp;&nbsp; 
+    Cette section contient les données initialisées de votre programme. </B></font></LI>
+  <LI> <font face="verdana" size="2" color="#CCCCCC"><B><font color="#FFE082">.DATA?</font>&nbsp; 
+    Cette section contient les données non initialisées de votre programme. Parfois vous voulez juste 
+	prévoir un espace mémoire pour contenir de futurs données, mais ne voulez pas l'initialiser (lui donner 
+	une valeur initiale). c'est le but de cette section. L'avantage des données non initialisées est : 
+	qu'il ne prend pas d'espace dans le fichier exécutable. Par exemple, si vous allouez(prévoyez) 10,000 
+	octets dans votre .DATA ? La section de votre exécutable ne sera pas gonflée de 10,000 octets. Sa 
+	taille reste pratiquement la même. Vous dites seulement à l'assembleur de combien de place votre programme 
+	aura besoin une fois qu'il sera chargé en mémoire, c'est tout.</B></font></LI>
+  <LI> <font face="verdana" size="2" color="#CCCCCC"><B><font color="#FFE082">.CONST</font>&nbsp; 
+    Cette section contient la déclaration des constantes employées par votre programme. Les constantes qui sont dans 
+	cette section ne seront jamais modifiées par votre programme. elles resteront seulement des *constantes*.</B></font></LI>
+</UL>	
+	<p><font face="verdana" color="#666600" size="2"><B>Vous n'êtes pas forcément obligé d'employer ces trois 
+	sections dans votre programme. Déclarez seulement la (ou les) section (s) que vous voulez utiliser.</B></font><font face="verdana"><font size="2"><br>
+  <BR>
+  <B><FONT COLOR="#3333FF">Il n'y a seulement qu'une section pour le code : </FONT><FONT COLOR="#CC33CC">.CODE</FONT><FONT COLOR="#3333FF">. 
+  C'est celle où vos lignes de code résident.</FONT></B> </font><BR>
+  <B><font color="#CC33CC" size="2">&lt;label></font></B> <font size="2"><BR>
+  <B><FONT COLOR="#CC33CC">end &lt;label></FONT></B> <BR>
+  <B><FONT COLOR="#3333FF">Où &lt;label> représente n'importe quelle étiquette arbitraire, et est employé pour 
+  indiquer le début et la fin de votre code. Les deux 'label' doivent être identiques.&nbsp; Toutes vos lignes 
+  de code doivent se trouver entre </FONT><FONT COLOR="#CC33CC">&lt;label></FONT><FONT COLOR="#3333FF"> 
+  et </FONT><FONT COLOR="#CC33CC">end &lt;label></FONT></B> </font><BR>
+  </font> </p>
+<HR WIDTH="100%">
+</DIV>
+<CENTER>
+  <font face="verdana" color="#006600"><B>[<A HREF="http://203.148.211.201/iczelion/index.html">Iczelion's 
+  Win32 Assembly HomePage</A>]</B></font> 
+</CENTER>
+<BR><BR><DIV ALIGN="right">Traduit par Morgatte</DIV>
+</BODY>
+</HTML>
